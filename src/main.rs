@@ -16,6 +16,9 @@ struct RawModeGuard {
 fn raw_mode() -> nix::Result<RawModeGuard> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
+
+    termios.input_flags.remove(termios::InputFlags::IXON);
+
     termios.local_flags.remove(termios::LocalFlags::ECHO);
     termios.local_flags.remove(termios::LocalFlags::ICANON);
     termios.local_flags.remove(termios::LocalFlags::ISIG);
