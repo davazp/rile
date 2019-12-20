@@ -50,6 +50,10 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
+//
+// Rendering
+//
+
 fn clear_screen() {
     unistd::write(libc::STDOUT_FILENO, "\x1b[2J".as_bytes()).unwrap();
     // Reposition cursor
@@ -57,28 +61,32 @@ fn clear_screen() {
     unistd::write(libc::STDOUT_FILENO, "\x1b[H".as_bytes()).unwrap();
 }
 
+//
+// Input processing
+//
+
 fn ctrl(ch: char) -> u32 {
     0x17 & (ch as u32)
+}
+
+fn read_key() -> u32 {
+    let mut buf = [0u8];
+    unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
+    let cmd = buf[0] as u32;
+    cmd
 }
 
 fn main() {
     clear_screen();
 
-    with_raw_mode(|| {
-        let mut buf = [0u8];
-
-        loop {
-            let read = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
-            let cmd = buf[0] as u32;
-
-            if cmd == ctrl('q') {
-                break;
-            }
-
-            if read > 0 {
-                clear_screen();
-                print!("read {} bytes: {:?}\r\n", read, buf);
-            }
+    with_raw_mode(|| loop {
+        let key = read_key();
+        if key == ctrl('q') {
+            break;
+        }
+        if key > 0 {
+            clear_screen();
+            print!("key {}\r\n", key);
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
