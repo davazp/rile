@@ -17,18 +17,29 @@ fn raw_mode() -> nix::Result<RawModeGuard> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
 
+    // --- Input flags ---
+    // Fix C-s and C-w
     termios.input_flags.remove(termios::InputFlags::IXON);
+    // Fix C-m to be read as 13, not 10
+    termios.input_flags.remove(termios::InputFlags::ICRNL);
 
+    // --- Output flags  ---
+    termios.output_flags.remove(termios::OutputFlags::OPOST);
+
+    // --- Local Flags ---
     termios.local_flags.remove(termios::LocalFlags::ECHO);
     termios.local_flags.remove(termios::LocalFlags::ICANON);
+    // Fix C-z and C-c
     termios.local_flags.remove(termios::LocalFlags::ISIG);
+    // Fix C-o on Mac OS X
+    termios.local_flags.remove(termios::LocalFlags::IEXTEN);
+
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
     return Ok(RawModeGuard { original_termios });
 }
 
 impl Drop for RawModeGuard {
     fn drop(&mut self) {
-        println!("restoring terminal");
         termios::tcsetattr(
             libc::STDIN_FILENO,
             termios::SetArg::TCSAFLUSH,
@@ -51,7 +62,7 @@ fn main() {
             _ => (),
         };
 
-        println!("read {} bytes: {:?}", result, buf);
+        print!("read {} bytes: {:?}\r\n", result, buf);
     }
 
     drop(raw_mode_guard)
