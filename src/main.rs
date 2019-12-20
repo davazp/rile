@@ -50,6 +50,17 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
+// Alternative screen allows us to enter in the editor and then
+// restore back the content of the terminal and scroll level.
+
+fn enable_alternative_screen_buffer() {
+    unistd::write(libc::STDOUT_FILENO, "\x1b[?1049h".as_bytes()).unwrap();
+}
+
+fn disable_alternative_screen_buffer() {
+    unistd::write(libc::STDOUT_FILENO, "\x1b[?1049l".as_bytes()).unwrap();
+}
+
 //
 // Rendering
 //
@@ -77,17 +88,23 @@ fn read_key() -> u32 {
 }
 
 fn main() {
-    clear_screen();
+    enable_alternative_screen_buffer();
 
-    with_raw_mode(|| loop {
-        let key = read_key();
-        if key == ctrl('q') {
-            break;
-        }
-        if key > 0 {
-            clear_screen();
-            print!("key {}\r\n", key);
+    with_raw_mode(|| {
+        clear_screen();
+
+        loop {
+            let key = read_key();
+            if key == ctrl('q') {
+                break;
+            }
+            if key > 0 {
+                clear_screen();
+                unistd::write(libc::STDOUT_FILENO, format!("key {}", key).as_bytes()).unwrap();
+            }
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
+
+    disable_alternative_screen_buffer()
 }
