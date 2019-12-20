@@ -50,7 +50,16 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
+fn clear_screen() {
+    unistd::write(libc::STDOUT_FILENO, "\x1b[2J".as_bytes()).unwrap();
+    // Reposition cursor
+    unistd::write(libc::STDOUT_FILENO, "\x1b[2J".as_bytes()).unwrap();
+    unistd::write(libc::STDOUT_FILENO, "\x1b[H".as_bytes()).unwrap();
+}
+
 fn main() {
+    clear_screen();
+
     with_raw_mode(|| {
         let mut buf = [0u8];
 
@@ -63,6 +72,7 @@ fn main() {
             };
 
             if read > 0 {
+                clear_screen();
                 print!("read {} bytes: {:?}\r\n", read, buf);
             }
         }
