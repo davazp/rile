@@ -57,6 +57,10 @@ fn clear_screen() {
     unistd::write(libc::STDOUT_FILENO, "\x1b[H".as_bytes()).unwrap();
 }
 
+fn ctrl(ch: char) -> u32 {
+    0x17 & (ch as u32)
+}
+
 fn main() {
     clear_screen();
 
@@ -65,11 +69,11 @@ fn main() {
 
         loop {
             let read = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
+            let cmd = buf[0] as u32;
 
-            match buf[0] as char {
-                'q' => break,
-                _ => (),
-            };
+            if cmd == ctrl('q') {
+                break;
+            }
 
             if read > 0 {
                 clear_screen();
