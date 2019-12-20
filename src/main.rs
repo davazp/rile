@@ -73,8 +73,9 @@ fn clear_screen() {
     csi("2J");
 }
 
-fn set_cursor() {
-    csi("H");
+fn set_cursor(n: u32, m: u32) {
+    let str = format!("{};{}H", n, m);
+    csi(&str);
 }
 
 //
@@ -104,7 +105,7 @@ fn main() {
             }
             if key > 0 {
                 clear_screen();
-                set_cursor();
+                set_cursor(1, 1);
                 unistd::write(libc::STDOUT_FILENO, format!("key {}", key).as_bytes()).unwrap();
             }
         }
