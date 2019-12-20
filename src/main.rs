@@ -82,15 +82,22 @@ fn set_cursor(n: u32, m: u32) {
 // Input processing
 //
 
-fn ctrl(ch: char) -> u32 {
-    0x17 & (ch as u32)
+#[derive(PartialEq, Debug)]
+struct Key(u32);
+
+fn ctrl(ch: char) -> Key {
+    Key(0x17 & (ch as u32))
 }
 
-fn read_key() -> u32 {
+fn read_key() -> Option<Key> {
     let mut buf = [0u8];
     unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
     let cmd = buf[0] as u32;
-    cmd
+    if cmd == 0 {
+        None
+    } else {
+        Some(Key(cmd))
+    }
 }
 
 fn main() {
@@ -99,14 +106,14 @@ fn main() {
     with_raw_mode(|| {
         clear_screen();
         loop {
-            let key = read_key();
-            if key == ctrl('q') {
-                break;
-            }
-            if key > 0 {
+            if let Some(key) = read_key() {
+                if key == ctrl('q') {
+                    break;
+                }
+
                 clear_screen();
                 set_cursor(1, 1);
-                unistd::write(libc::STDOUT_FILENO, format!("key {}", key).as_bytes()).unwrap();
+                unistd::write(libc::STDOUT_FILENO, format!("{:?}", key).as_bytes()).unwrap();
             }
         }
     })
