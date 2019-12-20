@@ -13,24 +13,24 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
 
-    termios.input_flags.remove(termios::InputFlags::IXON); // Fix C-s and C-w
-    termios.input_flags.remove(termios::InputFlags::ICRNL); // Fix C-m to be read as 13, not 10
+    termios.input_flags &= !termios::InputFlags::IXON;
+    termios.input_flags &= !termios::InputFlags::ICRNL; // Fix C-m to be read as 13, not 10
 
-    termios.output_flags.remove(termios::OutputFlags::OPOST);
+    termios.output_flags &= !termios::OutputFlags::OPOST;
 
-    termios.local_flags.remove(termios::LocalFlags::ECHO);
-    termios.local_flags.remove(termios::LocalFlags::ICANON);
-    termios.local_flags.remove(termios::LocalFlags::ISIG); // Fix C-z and C-c
-    termios.local_flags.remove(termios::LocalFlags::IEXTEN); // Fix C-o on Mac OS X
+    termios.local_flags &= !termios::LocalFlags::ECHO;
+    termios.local_flags &= !termios::LocalFlags::ICANON;
+    termios.local_flags &= !termios::LocalFlags::ISIG; // Fix C-z and C-c
+    termios.local_flags &= !termios::LocalFlags::IEXTEN; // Fix C-o on Mac OS X
 
     // Legacy flags
     //
     // The rest of flags should not have any effect on modern
     // terminals, but they are traditionally part of the raw mode.
-    termios.input_flags.remove(termios::InputFlags::BRKINT);
-    termios.input_flags.remove(termios::InputFlags::INPCK);
-    termios.input_flags.remove(termios::InputFlags::ISTRIP);
-    termios.control_flags.insert(termios::ControlFlags::CS8);
+    termios.input_flags &= !termios::InputFlags::BRKINT;
+    termios.input_flags &= !termios::InputFlags::INPCK;
+    termios.input_flags &= !termios::InputFlags::ISTRIP;
+    termios.control_flags |= termios::ControlFlags::CS8;
 
     // Be okay with read() returning 0 bytes read, and add a time out
     // of 1 1/10 of a second (100 ms)
@@ -55,14 +55,16 @@ fn main() {
         let mut buf = [0u8];
 
         loop {
-            let result = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
+            let read = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
 
             match buf[0] as char {
                 'q' => break,
                 _ => (),
             };
 
-            print!("read {} bytes: {:?}\r\n", result, buf);
+            if read > 0 {
+                print!("read {} bytes: {:?}\r\n", read, buf);
+            }
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
