@@ -17,24 +17,27 @@ fn raw_mode() -> nix::Result<RawModeGuard> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
 
-    // --- Input flags ---
-    // Fix C-s and C-w
-    termios.input_flags.remove(termios::InputFlags::IXON);
-    // Fix C-m to be read as 13, not 10
-    termios.input_flags.remove(termios::InputFlags::ICRNL);
+    termios.input_flags.remove(termios::InputFlags::IXON); // Fix C-s and C-w
+    termios.input_flags.remove(termios::InputFlags::ICRNL); // Fix C-m to be read as 13, not 10
 
-    // --- Output flags  ---
     termios.output_flags.remove(termios::OutputFlags::OPOST);
 
-    // --- Local Flags ---
     termios.local_flags.remove(termios::LocalFlags::ECHO);
     termios.local_flags.remove(termios::LocalFlags::ICANON);
-    // Fix C-z and C-c
-    termios.local_flags.remove(termios::LocalFlags::ISIG);
-    // Fix C-o on Mac OS X
-    termios.local_flags.remove(termios::LocalFlags::IEXTEN);
+    termios.local_flags.remove(termios::LocalFlags::ISIG); // Fix C-z and C-c
+    termios.local_flags.remove(termios::LocalFlags::IEXTEN); // Fix C-o on Mac OS X
+
+    // Legacy flags
+    //
+    // The rest of flags should not have any effect on modern
+    // terminals, but they are traditionally part of the raw mode.
+    termios.input_flags.remove(termios::InputFlags::BRKINT);
+    termios.input_flags.remove(termios::InputFlags::INPCK);
+    termios.input_flags.remove(termios::InputFlags::ISTRIP);
+    termios.control_flags.insert(termios::ControlFlags::CS8);
 
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
+
     return Ok(RawModeGuard { original_termios });
 }
 
