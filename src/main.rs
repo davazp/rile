@@ -50,15 +50,19 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
+fn csi(s: &str) {
+    unistd::write(libc::STDOUT_FILENO, format!("\x1b[{}", s).as_bytes()).unwrap();
+}
+
 // Alternative screen allows us to enter in the editor and then
 // restore back the content of the terminal and scroll level.
 
 fn enable_alternative_screen_buffer() {
-    unistd::write(libc::STDOUT_FILENO, "\x1b[?1049h".as_bytes()).unwrap();
+    csi("?1049h");
 }
 
 fn disable_alternative_screen_buffer() {
-    unistd::write(libc::STDOUT_FILENO, "\x1b[?1049l".as_bytes()).unwrap();
+    csi("?1049l");
 }
 
 //
@@ -66,10 +70,11 @@ fn disable_alternative_screen_buffer() {
 //
 
 fn clear_screen() {
-    unistd::write(libc::STDOUT_FILENO, "\x1b[2J".as_bytes()).unwrap();
-    // Reposition cursor
-    unistd::write(libc::STDOUT_FILENO, "\x1b[2J".as_bytes()).unwrap();
-    unistd::write(libc::STDOUT_FILENO, "\x1b[H".as_bytes()).unwrap();
+    csi("2J");
+}
+
+fn set_cursor() {
+    csi("H");
 }
 
 //
@@ -92,7 +97,6 @@ fn main() {
 
     with_raw_mode(|| {
         clear_screen();
-
         loop {
             let key = read_key();
             if key == ctrl('q') {
@@ -100,6 +104,7 @@ fn main() {
             }
             if key > 0 {
                 clear_screen();
+                set_cursor();
                 unistd::write(libc::STDOUT_FILENO, format!("key {}", key).as_bytes()).unwrap();
             }
         }
