@@ -9,11 +9,7 @@ use nix::unistd;
 // original state when dropped.
 //
 
-struct RawModeGuard {
-    original_termios: termios::Termios,
-}
-
-fn raw_mode() -> nix::Result<RawModeGuard> {
+fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
 
@@ -38,35 +34,31 @@ fn raw_mode() -> nix::Result<RawModeGuard> {
 
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
 
-    return Ok(RawModeGuard { original_termios });
-}
+    run();
 
-impl Drop for RawModeGuard {
-    fn drop(&mut self) {
-        termios::tcsetattr(
-            libc::STDIN_FILENO,
-            termios::SetArg::TCSAFLUSH,
-            &self.original_termios,
-        )
-        .expect("fail to reset terminal into cooked mode.")
-    }
+    termios::tcsetattr(
+        libc::STDIN_FILENO,
+        termios::SetArg::TCSAFLUSH,
+        &original_termios,
+    )?;
+
+    return Ok(());
 }
 
 fn main() {
-    let mut buf = [0u8];
+    with_raw_mode(|| {
+        let mut buf = [0u8];
 
-    let raw_mode_guard = raw_mode().expect("Could not initialize the terminal into raw mode.");
+        loop {
+            let result = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
 
-    loop {
-        let result = unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
+            match buf[0] as char {
+                'q' => break,
+                _ => (),
+            };
 
-        match buf[0] as char {
-            'q' => break,
-            _ => (),
-        };
-
-        print!("read {} bytes: {:?}\r\n", result, buf);
-    }
-
-    drop(raw_mode_guard)
+            print!("read {} bytes: {:?}\r\n", result, buf);
+        }
+    })
+    .expect("Could not initialize the terminal to run in raw mode.");
 }
