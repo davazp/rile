@@ -32,6 +32,11 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     termios.input_flags.remove(termios::InputFlags::ISTRIP);
     termios.control_flags.insert(termios::ControlFlags::CS8);
 
+    // Be okay with read() returning 0 bytes read, and add a time out
+    // of 1 1/10 of a second (100 ms)
+    termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
+    termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
+
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
 
     run();
