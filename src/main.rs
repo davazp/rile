@@ -18,6 +18,9 @@ struct Context {
     rows: usize,
     columns: usize,
     truecolor: bool,
+
+    cursor_line: usize,
+    cursor_column: usize,
 }
 
 // Terminal
@@ -175,17 +178,18 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.hide_cursor();
     term.set_cursor(1, 1);
 
+    let offset = 4;
+
     // Main window
     term.csi("38;5;240m");
     for row in 1..(context.rows - 1) {
         term.erase_line();
-        term.write(&format!("{} \r\n", row));
+        term.write(&format!("{:width$} \r\n", row, width = offset - 1));
     }
     term.csi("m");
 
     term.save_cursor();
     let welcome = "Welcome to the sted editor";
-    let offset = 4;
     term.set_cursor(
         context.rows / 2,
         (context.columns - offset) / 2 - welcome.len() / 2 + offset,
@@ -207,7 +211,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
 
     term.csi("m");
 
-    term.set_cursor(1, 3);
+    term.set_cursor(context.cursor_line + 1, context.cursor_column + offset + 1);
 
     term.flush()
 }
@@ -250,6 +254,9 @@ fn main() {
         rows,
         columns,
         truecolor: support_true_color(),
+
+        cursor_line: 0,
+        cursor_column: 0,
     };
 
     // Detect when the terminal was resized
