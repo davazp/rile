@@ -1,12 +1,17 @@
 //! sted is a simple editor written in Rust.
 //!
 
+extern crate signal_hook;
+
 use nix;
 use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
+
 use std::env;
 use std::mem;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 /// The state of the editor.
 struct Context {
@@ -178,17 +183,29 @@ fn read_key() -> Option<Key> {
 /// The main entry point of the editor.
 fn main() {
     let (rows, columns) = get_window_size();
-    let context = Context {
+    let mut context = Context {
         rows,
         columns,
         truecolor: support_true_color(),
     };
+
+    // Detect when the terminal was resized
+    let was_resize = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::SIGWINCH, Arc::clone(&was_resize)).unwrap();
 
     enable_alternative_screen_buffer();
 
     with_raw_mode(|| {
         refresh_screen(&context);
         loop {
+            if was_resize.load(Ordering::Relaxed) {
+                let (rows, columns) = get_window_size();
+                context.rows = rows;
+                context.columns = columns;
+                refresh_screen(&context);
+                was_resize.store(false, Ordering::Relaxed);
+            }
+
             if let Some(key) = read_key() {
                 if key == ctrl('q') {
                     break;
