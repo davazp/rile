@@ -5,12 +5,14 @@ use nix;
 use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
+use std::env;
 use std::mem;
 
 /// The state of the editor.
 struct Context {
     rows: usize,
     columns: usize,
+    truecolor: bool,
 }
 
 // Terminal
@@ -113,6 +115,10 @@ fn get_window_size() -> (usize, usize) {
     }
 }
 
+fn support_true_color() -> bool {
+    env::var("COLORTERM") == Ok(String::from("truecolor"))
+}
+
 // Rendering
 //
 //
@@ -123,7 +129,17 @@ fn get_window_size() -> (usize, usize) {
 fn refresh_screen(context: &Context) {
     clear_screen();
     set_cursor(context.rows - 1, 1);
-    unistd::write(libc::STDOUT_FILENO, "~".repeat(context.columns).as_bytes()).unwrap();
+
+    // Modeline
+
+    if context.truecolor {
+        csi(&format!("48;2;{};{};{}m", 235, 171, 52));
+    } else {
+        csi("7m");
+    }
+
+    unistd::write(libc::STDOUT_FILENO, " ".repeat(context.columns).as_bytes()).unwrap();
+    csi("m");
 
     set_cursor(1, 1);
 }
@@ -162,7 +178,11 @@ fn read_key() -> Option<Key> {
 /// The main entry point of the editor.
 fn main() {
     let (rows, columns) = get_window_size();
-    let context = Context { rows, columns };
+    let context = Context {
+        rows,
+        columns,
+        truecolor: support_true_color(),
+    };
 
     enable_alternative_screen_buffer();
 
