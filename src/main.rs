@@ -21,6 +21,11 @@ struct Context {
 
     cursor_line: usize,
     cursor_column: usize,
+
+    // Result of a command. They will take effect once a full command
+    // has been processed.
+    to_exit: bool,
+    to_refresh: bool,
 }
 
 // Terminal
@@ -252,6 +257,39 @@ fn read_key() -> Option<Key> {
     }
 }
 
+/// Process user input.
+fn process_user_input(context: &mut Context) {
+    if let Some(k) = read_key() {
+        context.to_refresh = true;
+        match k {
+            _ if k == ctrl('q') => {
+                context.to_exit = true;
+            }
+            _ if k == key('a') => {
+                if context.cursor_column > 0 {
+                    context.cursor_column -= 1;
+                }
+            }
+            _ if k == key('d') => {
+                if context.cursor_column < context.columns - 4 /* offset */ - 1 {
+                    context.cursor_column += 1;
+                }
+            }
+            _ if k == key('s') => {
+                if context.cursor_line < context.rows - 2 - 1 {
+                    context.cursor_line += 1;
+                }
+            }
+            _ if k == key('w') => {
+                if context.cursor_line > 0 {
+                    context.cursor_line -= 1;
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 /// The main entry point of the editor.
 fn main() {
     let (rows, columns) = get_window_size();
@@ -262,6 +300,9 @@ fn main() {
 
         cursor_line: 0,
         cursor_column: 0,
+
+        to_exit: false,
+        to_refresh: false,
     };
 
     // Detect when the terminal was resized
@@ -283,34 +324,15 @@ fn main() {
             was_resize.store(false, Ordering::Relaxed);
         }
 
-        if let Some(k) = read_key() {
-            match k {
-                _ if k == ctrl('q') => {
-                    break;
-                }
-                _ if k == key('a') => {
-                    if context.cursor_column > 0 {
-                        context.cursor_column -= 1;
-                    }
-                }
-                _ if k == key('d') => {
-                    if context.cursor_column < context.columns - 4 /* offset */ - 1 {
-                        context.cursor_column += 1;
-                    }
-                }
-                _ if k == key('s') => {
-                    if context.cursor_line < context.rows - 2 - 1 {
-                        context.cursor_line += 1;
-                    }
-                }
-                _ if k == key('w') => {
-                    if context.cursor_line > 0 {
-                        context.cursor_line -= 1;
-                    }
-                }
-                _ => {}
-            }
+        process_user_input(&mut context);
+
+        if context.to_exit {
+            break;
+        }
+
+        if context.to_refresh {
             refresh_screen(&mut term, &context);
+            context.to_refresh = false;
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
