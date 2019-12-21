@@ -60,9 +60,6 @@ fn csi(s: &str) {
     unistd::write(libc::STDOUT_FILENO, format!("\x1b[{}", s).as_bytes()).unwrap();
 }
 
-// Alternative screen allows us to enter in the editor and then
-// restore back the content of the terminal and scroll level.
-
 /// Enable the alternative screen buffer.
 ///
 /// It will switch to a screen buffer with no scrolling. You can
@@ -82,10 +79,6 @@ fn disable_alternative_screen_buffer() {
     csi("?1049l");
 }
 
-//
-// Rendering
-//
-
 /// Clear the screen.
 fn clear_screen() {
     csi("2J");
@@ -99,10 +92,6 @@ fn set_cursor(row: u32, column: u32) {
     let str = format!("{};{}H", row, column);
     csi(&str);
 }
-
-//
-// Input processing
-//
 
 #[derive(PartialEq, Debug)]
 struct Key(u32);
