@@ -117,6 +117,7 @@ impl Term {
     }
 
     /// Clear the screen.
+    #[allow(unused)]
     fn clear_screen(&mut self) {
         self.csi("2J");
     }
@@ -136,6 +137,10 @@ impl Term {
 
     fn show_cursor(&mut self) {
         self.csi("?25h");
+    }
+
+    fn erase_line(&mut self) {
+        self.csi("2K");
     }
 }
 
@@ -161,23 +166,29 @@ fn support_true_color() -> bool {
 /// Ensure the terminal reflects the latest state of the editor.
 fn refresh_screen(term: &mut Term, context: &Context) {
     term.hide_cursor();
+    term.set_cursor(1, 1);
 
-    term.clear_screen();
-    term.set_cursor(context.rows - 1, 1);
+    // Main window
+    term.csi("38;5;240m");
+    for row in 1..(context.rows - 1) {
+        term.erase_line();
+        term.write(&format!("{} \r\n", row));
+    }
+    term.csi("m");
 
     // Modeline
-
     if context.truecolor {
+        term.csi(&format!("38;5;0m"));
         term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
     } else {
         term.csi("7m");
     }
+    term.erase_line();
+    term.write("  main.rs");
 
-    term.write(" ".repeat(context.columns).as_ref());
-    term.csi("m");
-
-    term.set_cursor(1, 1);
     term.show_cursor();
+
+    term.csi("m");
 
     term.flush()
 }
@@ -246,7 +257,7 @@ fn main() {
                     break;
                 }
 
-                term.set_cursor(1, 1);
+                term.set_cursor(1, 5);
                 term.write(format!("{:?}", key).as_ref());
                 term.flush();
             }
