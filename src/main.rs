@@ -129,6 +129,14 @@ impl Term {
         let str = format!("{};{}H", row, column);
         self.csi(&str);
     }
+
+    fn hide_cursor(&mut self) {
+        self.csi("?25l")
+    }
+
+    fn show_cursor(&mut self) {
+        self.csi("?25h");
+    }
 }
 
 /// Get the number of rows and columns of the terminal.
@@ -152,6 +160,8 @@ fn support_true_color() -> bool {
 ///
 /// Ensure the terminal reflects the latest state of the editor.
 fn refresh_screen(term: &mut Term, context: &Context) {
+    term.hide_cursor();
+
     term.clear_screen();
     term.set_cursor(context.rows - 1, 1);
 
@@ -167,6 +177,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.csi("m");
 
     term.set_cursor(1, 1);
+    term.show_cursor();
 
     term.flush()
 }
@@ -244,5 +255,6 @@ fn main() {
     .expect("Could not initialize the terminal to run in raw mode.");
 
     term.disable_alternative_screen_buffer();
+    term.show_cursor();
     term.flush();
 }
