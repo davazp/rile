@@ -1,14 +1,19 @@
+//! sted is a simple editor written in Rust.
+//!
+
 use nix;
 use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
 
-// Put the terminal into raw mode
-//
-// The returned `RawModeGuard` guard will restore the terminal to its
-// original state when dropped.
-//
-
+/// Execute a function with the terminal in raw mode.
+///
+/// The argument `run` will be executed with the terminal in "raw
+/// mode". In this mode, echo is disabled, most key presses will be
+/// available as inputs through STDIN.
+///
+/// After `run` returns, the terminal will be restored to the previous
+/// configuration.
 fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     let mut termios = termios::tcgetattr(libc::STDIN_FILENO)?;
     let original_termios = termios.clone();
@@ -50,6 +55,7 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
+/// Generate a Control Sequence Introducer (CSI) escape code.
 fn csi(s: &str) {
     unistd::write(libc::STDOUT_FILENO, format!("\x1b[{}", s).as_bytes()).unwrap();
 }
@@ -57,10 +63,21 @@ fn csi(s: &str) {
 // Alternative screen allows us to enter in the editor and then
 // restore back the content of the terminal and scroll level.
 
+/// Enable the alternative screen buffer.
+///
+/// It will switch to a screen buffer with no scrolling. You can
+/// restore the previous screen buffer, including all the content and
+/// scroll level of the terminal back by calling
+/// `disable_alternative_screen_buffer`.
 fn enable_alternative_screen_buffer() {
     csi("?1049h");
 }
 
+/// Disable the the alternative screen buffer.
+///
+/// Switch back to the screen buffer when
+/// `enable_alternative_screen_buffer` was invoked. Restoring the
+/// content of the screen.
 fn disable_alternative_screen_buffer() {
     csi("?1049l");
 }
@@ -69,12 +86,17 @@ fn disable_alternative_screen_buffer() {
 // Rendering
 //
 
+/// Clear the screen.
 fn clear_screen() {
     csi("2J");
 }
 
-fn set_cursor(n: u32, m: u32) {
-    let str = format!("{};{}H", n, m);
+/// Set the cursor position to the row `n` and column `m`.
+///
+/// Both `row` and `column` start at 1.
+///
+fn set_cursor(row: u32, column: u32) {
+    let str = format!("{};{}H", row, column);
     csi(&str);
 }
 
@@ -85,10 +107,23 @@ fn set_cursor(n: u32, m: u32) {
 #[derive(PartialEq, Debug)]
 struct Key(u32);
 
+/// Return a key made of a character with ctrl pressed.
+///
+/// ## Example
+///
+/// ```
+/// ctrl('q')
+/// ```
+///
 fn ctrl(ch: char) -> Key {
     Key(0x17 & (ch as u32))
 }
 
+/// Read and return a key.
+///
+/// If no key is entered by the user, the function will timeout and it
+/// will return None instead.
+///
 fn read_key() -> Option<Key> {
     let mut buf = [0u8];
     unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
@@ -100,6 +135,7 @@ fn read_key() -> Option<Key> {
     }
 }
 
+/// The main entry point of the editor.
 fn main() {
     enable_alternative_screen_buffer();
 
