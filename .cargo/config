@@ -1,0 +1,4 @@
+# Alias cargo commands. The first 4 aliases are built in. If your
+# command requires grouped whitespace use the list format.
+[alias]
+internal-doc = "doc --document-private-items"
