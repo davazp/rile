@@ -231,6 +231,11 @@ fn ctrl(ch: char) -> Key {
     Key(0x17 & (ch as u32))
 }
 
+/// Return a key from a character.
+fn key(ch: char) -> Key {
+    Key(ch as u32)
+}
+
 /// Read and return a key.
 ///
 /// If no key is entered by the user, the function will timeout and it
@@ -267,26 +272,45 @@ fn main() {
 
     term.enable_alternative_screen_buffer();
 
-    with_raw_mode(|| {
-        refresh_screen(&mut term, &context);
-        loop {
-            if was_resize.load(Ordering::Relaxed) {
-                let (rows, columns) = get_window_size();
-                context.rows = rows;
-                context.columns = columns;
-                refresh_screen(&mut term, &context);
-                was_resize.store(false, Ordering::Relaxed);
-            }
+    refresh_screen(&mut term, &context);
 
-            if let Some(key) = read_key() {
-                if key == ctrl('q') {
+    with_raw_mode(|| loop {
+        if was_resize.load(Ordering::Relaxed) {
+            let (rows, columns) = get_window_size();
+            context.rows = rows;
+            context.columns = columns;
+            refresh_screen(&mut term, &context);
+            was_resize.store(false, Ordering::Relaxed);
+        }
+
+        if let Some(k) = read_key() {
+            match k {
+                _ if k == ctrl('q') => {
                     break;
                 }
-
-                term.set_cursor(1, 5);
-                term.write(format!("{:?}", key).as_ref());
-                term.flush();
+                _ if k == key('a') => {
+                    if context.cursor_column > 0 {
+                        context.cursor_column -= 1;
+                    }
+                }
+                _ if k == key('d') => {
+                    if context.cursor_column < context.columns - 4 /* offset */ - 1 {
+                        context.cursor_column += 1;
+                    }
+                }
+                _ if k == key('s') => {
+                    if context.cursor_line < context.rows - 2 - 1 {
+                        context.cursor_line += 1;
+                    }
+                }
+                _ if k == key('w') => {
+                    if context.cursor_line > 0 {
+                        context.cursor_line -= 1;
+                    }
+                }
+                _ => {}
             }
+            refresh_screen(&mut term, &context);
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
