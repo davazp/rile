@@ -84,13 +84,29 @@ fn clear_screen() {
     csi("2J");
 }
 
-/// Set the cursor position to the row `n` and column `m`.
+/// Set the cursor position to `row` and `column`.`
 ///
 /// Both `row` and `column` start at 1.
 ///
 fn set_cursor(row: u32, column: u32) {
     let str = format!("{};{}H", row, column);
     csi(&str);
+}
+
+/// Refresh the screen.
+///
+/// Ensure the terminal reflects the latest state of the editor.
+fn refresh_screen() {
+    clear_screen();
+    set_cursor(24, 1);
+    unistd::write(
+        libc::STDOUT_FILENO,
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            .as_bytes(),
+    )
+    .unwrap();
+
+    set_cursor(1, 1);
 }
 
 #[derive(PartialEq, Debug)]
@@ -129,14 +145,13 @@ fn main() {
     enable_alternative_screen_buffer();
 
     with_raw_mode(|| {
-        clear_screen();
+        refresh_screen();
         loop {
             if let Some(key) = read_key() {
                 if key == ctrl('q') {
                     break;
                 }
 
-                clear_screen();
                 set_cursor(1, 1);
                 unistd::write(libc::STDOUT_FILENO, format!("{:?}", key).as_bytes()).unwrap();
             }
