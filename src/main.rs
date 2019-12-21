@@ -142,6 +142,13 @@ impl Term {
     fn erase_line(&mut self) {
         self.csi("2K");
     }
+
+    fn save_cursor(&mut self) {
+        self.csi("s");
+    }
+    fn restore_cursor(&mut self) {
+        self.csi("u");
+    }
 }
 
 /// Get the number of rows and columns of the terminal.
@@ -176,6 +183,16 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     }
     term.csi("m");
 
+    term.save_cursor();
+    let welcome = "Welcome to the sted editor";
+    let offset = 4;
+    term.set_cursor(
+        context.rows / 2,
+        (context.columns - offset) / 2 - welcome.len() / 2 + offset,
+    );
+    term.write(&welcome);
+    term.restore_cursor();
+
     // Modeline
     if context.truecolor {
         term.csi(&format!("38;5;0m"));
@@ -189,6 +206,8 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.show_cursor();
 
     term.csi("m");
+
+    term.set_cursor(1, 3);
 
     term.flush()
 }
