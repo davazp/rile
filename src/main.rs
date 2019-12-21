@@ -5,6 +5,17 @@ use nix;
 use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
+use std::mem;
+
+/// The state of the editor.
+struct Context {
+    rows: usize,
+    columns: usize,
+}
+
+// Terminal
+//
+//
 
 /// Execute a function with the terminal in raw mode.
 ///
@@ -88,23 +99,31 @@ fn clear_screen() {
 ///
 /// Both `row` and `column` start at 1.
 ///
-fn set_cursor(row: u32, column: u32) {
+fn set_cursor(row: usize, column: usize) {
     let str = format!("{};{}H", row, column);
     csi(&str);
 }
 
+/// Get the number of rows and columns of the terminal.
+fn get_window_size() -> (usize, usize) {
+    unsafe {
+        let mut winsize: libc::winsize = mem::zeroed();
+        libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut winsize);
+        (winsize.ws_row as usize, winsize.ws_col as usize)
+    }
+}
+
+// Rendering
+//
+//
+
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-fn refresh_screen() {
+fn refresh_screen(context: &Context) {
     clear_screen();
-    set_cursor(24, 1);
-    unistd::write(
-        libc::STDOUT_FILENO,
-        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-            .as_bytes(),
-    )
-    .unwrap();
+    set_cursor(context.rows - 1, 1);
+    unistd::write(libc::STDOUT_FILENO, "~".repeat(context.columns).as_bytes()).unwrap();
 
     set_cursor(1, 1);
 }
@@ -142,10 +161,13 @@ fn read_key() -> Option<Key> {
 
 /// The main entry point of the editor.
 fn main() {
+    let (rows, columns) = get_window_size();
+    let context = Context { rows, columns };
+
     enable_alternative_screen_buffer();
 
     with_raw_mode(|| {
-        refresh_screen();
+        refresh_screen(&context);
         loop {
             if let Some(key) = read_key() {
                 if key == ctrl('q') {
