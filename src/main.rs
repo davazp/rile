@@ -73,42 +73,62 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     return Ok(());
 }
 
-/// Generate a Control Sequence Introducer (CSI) escape code.
-fn csi(s: &str) {
-    unistd::write(libc::STDOUT_FILENO, format!("\x1b[{}", s).as_bytes()).unwrap();
+struct Term {
+    buffer: String,
 }
 
-/// Enable the alternative screen buffer.
-///
-/// It will switch to a screen buffer with no scrolling. You can
-/// restore the previous screen buffer, including all the content and
-/// scroll level of the terminal back by calling
-/// `disable_alternative_screen_buffer`.
-fn enable_alternative_screen_buffer() {
-    csi("?1049h");
-}
+impl Term {
+    fn new() -> Term {
+        Term {
+            buffer: String::new(),
+        }
+    }
 
-/// Disable the the alternative screen buffer.
-///
-/// Switch back to the screen buffer when
-/// `enable_alternative_screen_buffer` was invoked. Restoring the
-/// content of the screen.
-fn disable_alternative_screen_buffer() {
-    csi("?1049l");
-}
+    fn write(&mut self, str: &str) {
+        self.buffer.push_str(str);
+    }
+    fn flush(&mut self) {
+        unistd::write(libc::STDOUT_FILENO, self.buffer.as_bytes()).unwrap();
+        self.buffer.clear();
+    }
 
-/// Clear the screen.
-fn clear_screen() {
-    csi("2J");
-}
+    /// Generate a Control Sequence Introducer (CSI) escape code.
+    fn csi(&mut self, s: &str) {
+        self.write(&format!("\x1b[{}", s));
+    }
 
-/// Set the cursor position to `row` and `column`.`
-///
-/// Both `row` and `column` start at 1.
-///
-fn set_cursor(row: usize, column: usize) {
-    let str = format!("{};{}H", row, column);
-    csi(&str);
+    /// Enable the alternative screen buffer.
+    ///
+    /// It will switch to a screen buffer with no scrolling. You can
+    /// restore the previous screen buffer, including all the content and
+    /// scroll level of the terminal back by calling
+    /// `disable_alternative_screen_buffer`.
+    fn enable_alternative_screen_buffer(&mut self) {
+        self.csi("?1049h");
+    }
+
+    /// Disable the the alternative screen buffer.
+    ///
+    /// Switch back to the screen buffer when
+    /// `enable_alternative_screen_buffer` was invoked. Restoring the
+    /// content of the screen.
+    fn disable_alternative_screen_buffer(&mut self) {
+        self.csi("?1049l");
+    }
+
+    /// Clear the screen.
+    fn clear_screen(&mut self) {
+        self.csi("2J");
+    }
+
+    /// Set the cursor position to `row` and `column`.`
+    ///
+    /// Both `row` and `column` start at 1.
+    ///
+    fn set_cursor(&mut self, row: usize, column: usize) {
+        let str = format!("{};{}H", row, column);
+        self.csi(&str);
+    }
 }
 
 /// Get the number of rows and columns of the terminal.
@@ -131,22 +151,24 @@ fn support_true_color() -> bool {
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-fn refresh_screen(context: &Context) {
-    clear_screen();
-    set_cursor(context.rows - 1, 1);
+fn refresh_screen(term: &mut Term, context: &Context) {
+    term.clear_screen();
+    term.set_cursor(context.rows - 1, 1);
 
     // Modeline
 
     if context.truecolor {
-        csi(&format!("48;2;{};{};{}m", 235, 171, 52));
+        term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
     } else {
-        csi("7m");
+        term.csi("7m");
     }
 
-    unistd::write(libc::STDOUT_FILENO, " ".repeat(context.columns).as_bytes()).unwrap();
-    csi("m");
+    term.write(" ".repeat(context.columns).as_ref());
+    term.csi("m");
 
-    set_cursor(1, 1);
+    term.set_cursor(1, 1);
+
+    term.flush()
 }
 
 #[derive(PartialEq, Debug)]
@@ -193,16 +215,18 @@ fn main() {
     let was_resize = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::SIGWINCH, Arc::clone(&was_resize)).unwrap();
 
-    enable_alternative_screen_buffer();
+    let mut term = Term::new();
+
+    term.enable_alternative_screen_buffer();
 
     with_raw_mode(|| {
-        refresh_screen(&context);
+        refresh_screen(&mut term, &context);
         loop {
             if was_resize.load(Ordering::Relaxed) {
                 let (rows, columns) = get_window_size();
                 context.rows = rows;
                 context.columns = columns;
-                refresh_screen(&context);
+                refresh_screen(&mut term, &context);
                 was_resize.store(false, Ordering::Relaxed);
             }
 
@@ -211,12 +235,14 @@ fn main() {
                     break;
                 }
 
-                set_cursor(1, 1);
-                unistd::write(libc::STDOUT_FILENO, format!("{:?}", key).as_bytes()).unwrap();
+                term.set_cursor(1, 1);
+                term.write(format!("{:?}", key).as_ref());
+                term.flush();
             }
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
 
-    disable_alternative_screen_buffer()
+    term.disable_alternative_screen_buffer();
+    term.flush();
 }
