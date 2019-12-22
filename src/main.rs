@@ -379,6 +379,35 @@ fn move_end_of_line(context: &mut Context) {
     context.cursor_column = eol;
 }
 
+fn forward_char(context: &mut Context) {
+    if context.cursor_column < context.columns - 4 /* offset */ - 1 {
+        context.cursor_column += 1;
+    }
+}
+
+fn backward_char(context: &mut Context) {
+    if context.cursor_column > 0 {
+        context.cursor_column -= 1;
+    }
+}
+
+fn next_line(context: &mut Context) {
+    context.cursor_line += 1;
+    if context.cursor_line > context.scroll_line + context.rows - 2 - 1 {
+        context.scroll_line += 1;
+    }
+}
+
+fn previous_line(context: &mut Context) {
+    if context.cursor_line > 0 {
+        context.cursor_line -= 1;
+    }
+
+    if context.cursor_line < context.scroll_line {
+        context.scroll_line -= 1;
+    }
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) {
     if let Some(k) = read_key() {
@@ -397,29 +426,16 @@ fn process_user_input(context: &mut Context) {
             }
 
             _ if k == ctrl('f') => {
-                if context.cursor_column < context.columns - 4 /* offset */ - 1 {
-                    context.cursor_column += 1;
-                }
+                forward_char(context);
             }
             _ if k == ctrl('b') => {
-                if context.cursor_column > 0 {
-                    context.cursor_column -= 1;
-                }
+                backward_char(context);
             }
             _ if k == ctrl('p') => {
-                if context.cursor_line > 0 {
-                    context.cursor_line -= 1;
-                }
-
-                if context.cursor_line < context.scroll_line {
-                    context.scroll_line -= 1;
-                }
+                previous_line(context);
             }
             _ if k == ctrl('n') => {
-                context.cursor_line += 1;
-                if context.cursor_line > context.scroll_line + context.rows - 2 - 1 {
-                    context.scroll_line += 1;
-                }
+                next_line(context);
             }
 
             _ => {}
