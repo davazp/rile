@@ -327,12 +327,28 @@ fn key(ch: char) -> Key {
 /// If no key is entered by the user, the function will timeout and it
 /// will return None instead.
 ///
+
+const ARROW_UP: &'static [u8; 2] = b"[A";
+const ARROW_DOWN: &'static [u8; 2] = b"[B";
+const ARROW_RIGHT: &'static [u8; 2] = b"[C";
+const ARROW_LEFT: &'static [u8; 2] = b"[D";
+
 fn read_key() -> Option<Key> {
     let mut buf = [0u8];
     unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
     let cmd = buf[0] as u32;
     if cmd == 0 {
         None
+    } else if cmd == 0x1b {
+        let mut seq: [u8; 2] = [0; 2];
+        unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
+        match &seq {
+            ARROW_UP => Some(ctrl('p')),
+            ARROW_DOWN => Some(ctrl('n')),
+            ARROW_RIGHT => Some(ctrl('f')),
+            ARROW_LEFT => Some(ctrl('b')),
+            _ => Some(Key(cmd)),
+        }
     } else {
         Some(Key(cmd))
     }
