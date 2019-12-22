@@ -277,11 +277,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     // `write_line` to pad the string with spaces.
     write_line(
         term,
-        &format!(
-            "  {}   L{}",
-            "main.rs",
-            context.scroll_line + context.cursor_line + 1
-        ),
+        &format!("  {}   L{}", "main.rs", context.cursor_line + 1),
         window_columns,
     );
     term.erase_line(ErasePart::ToEnd);
@@ -290,7 +286,10 @@ fn refresh_screen(term: &mut Term, context: &Context) {
 
     term.csi("m");
 
-    term.set_cursor(context.cursor_line + 1, context.cursor_column + offset + 1);
+    term.set_cursor(
+        context.cursor_line - context.scroll_line + 1,
+        context.cursor_column + offset + 1,
+    );
 
     term.flush()
 }
@@ -376,14 +375,15 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('p') => {
                 if context.cursor_line > 0 {
                     context.cursor_line -= 1;
-                } else if context.scroll_line > 0 {
+                }
+
+                if context.cursor_line < context.scroll_line {
                     context.scroll_line -= 1;
                 }
             }
             _ if k == ctrl('n') => {
-                if context.cursor_line < context.rows - 2 - 1 {
-                    context.cursor_line += 1;
-                } else {
+                context.cursor_line += 1;
+                if context.cursor_line > context.scroll_line + context.rows - 2 - 1 {
                     context.scroll_line += 1;
                 }
             }
