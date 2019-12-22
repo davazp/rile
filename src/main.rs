@@ -213,7 +213,8 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     let window_lines = context.rows - 2;
 
     let offset = if context.show_lines {
-        format!("{}", context.scroll_line + window_lines).len() + 1
+        let last_linenum_width = format!("{}", context.scroll_line + window_lines).len();
+        last_linenum_width + 1
     } else {
         0
     };
@@ -261,7 +262,11 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         term.csi("7m");
     }
     term.erase_line();
-    term.write("  main.rs");
+    term.write(&format!(
+        "  {}   L{}",
+        "main.rs",
+        context.scroll_line + context.cursor_line + 1
+    ));
 
     term.show_cursor();
 
