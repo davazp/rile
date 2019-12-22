@@ -362,6 +362,20 @@ fn process_user_input(context: &mut Context) {
                 context.to_exit = true;
             }
 
+            _ if k == ctrl('a') => {
+                context.cursor_column = 0;
+            }
+
+            _ if k == ctrl('e') => {
+                let buffer = &context.current_buffer;
+                let eol = if let Some(line) = buffer.lines.get(context.cursor_line) {
+                    line.len()
+                } else {
+                    0
+                };
+                context.cursor_column = eol;
+            }
+
             _ if k == ctrl('f') => {
                 if context.cursor_column < context.columns - 4 /* offset */ - 1 {
                     context.cursor_column += 1;
