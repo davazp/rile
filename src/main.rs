@@ -423,15 +423,12 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('q') => {
                 context.to_exit = true;
             }
-
             _ if k == ctrl('a') => {
                 move_beginning_of_line(context);
             }
-
             _ if k == ctrl('e') => {
                 move_end_of_line(context);
             }
-
             _ if k == ctrl('f') => {
                 forward_char(context);
             }
@@ -444,7 +441,6 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('n') => {
                 next_line(context);
             }
-
             _ => {}
         }
     }
