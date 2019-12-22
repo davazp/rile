@@ -64,11 +64,8 @@ struct Context {
 }
 
 impl Context {
-    fn get_current_line(&self) -> Option<&str> {
-        self.current_buffer
-            .lines
-            .get(self.cursor.line)
-            .map(|s| &s[..])
+    fn get_current_line(&self) -> &str {
+        &self.current_buffer.lines[self.cursor.line]
     }
 }
 
@@ -376,19 +373,17 @@ fn read_key() -> Option<Key> {
 }
 
 fn move_beginning_of_line(context: &mut Context) {
-    let bol = context
-        .get_current_line()
-        .and_then(|line| {
-            line.chars()
-                .enumerate()
-                .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor.column)
-        })
+    let line = context.get_current_line();
+    let bol = line
+        .chars()
+        .enumerate()
+        .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor.column)
         .unwrap_or(0);
     context.cursor.column = bol;
 }
 
 fn move_end_of_line(context: &mut Context) {
-    let eol = context.get_current_line().map_or(0, |l| l.len());
+    let eol = context.get_current_line().len();
     context.cursor.column = eol;
 }
 
@@ -406,6 +401,8 @@ fn backward_char(context: &mut Context) {
 
 fn next_line(context: &mut Context) {
     context.cursor.line += 1;
+    context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
+
     adjust_scroll(context);
 }
 
