@@ -59,6 +59,15 @@ struct Context {
     to_refresh: bool,
 }
 
+impl Context {
+    fn get_current_line(&self) -> Option<&str> {
+        self.current_buffer
+            .lines
+            .get(self.cursor_line)
+            .map(|s| &s[..])
+    }
+}
+
 // Terminal
 //
 //
@@ -353,6 +362,23 @@ fn read_key() -> Option<Key> {
     }
 }
 
+fn move_beginning_of_line(context: &mut Context) {
+    let bol = context
+        .get_current_line()
+        .and_then(|line| {
+            line.chars()
+                .enumerate()
+                .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor_column)
+        })
+        .unwrap_or(0);
+    context.cursor_column = bol;
+}
+
+fn move_end_of_line(context: &mut Context) {
+    let eol = context.get_current_line().map_or(0, |l| l.len());
+    context.cursor_column = eol;
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) {
     if let Some(k) = read_key() {
@@ -363,17 +389,11 @@ fn process_user_input(context: &mut Context) {
             }
 
             _ if k == ctrl('a') => {
-                context.cursor_column = 0;
+                move_beginning_of_line(context);
             }
 
             _ if k == ctrl('e') => {
-                let buffer = &context.current_buffer;
-                let eol = if let Some(line) = buffer.lines.get(context.cursor_line) {
-                    line.len()
-                } else {
-                    0
-                };
-                context.cursor_column = eol;
+                move_end_of_line(context);
             }
 
             _ if k == ctrl('f') => {
