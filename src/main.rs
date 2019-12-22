@@ -13,6 +13,24 @@ use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+/// A buffer contains text that can be edited.
+struct Buffer {
+    lines: Vec<String>,
+}
+
+impl Buffer {
+    #[allow(unused)]
+    fn new() -> Buffer {
+        Buffer { lines: Vec::new() }
+    }
+
+    fn from_string(str: &str) -> Buffer {
+        Buffer {
+            lines: str.lines().map(String::from).collect(),
+        }
+    }
+}
+
 /// The state of the editor.
 struct Context {
     rows: usize,
@@ -21,6 +39,8 @@ struct Context {
 
     cursor_line: usize,
     cursor_column: usize,
+
+    current_buffer: Buffer,
 
     // Result of a command. They will take effect once a full command
     // has been processed.
@@ -184,12 +204,19 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.set_cursor(1, 1);
 
     let offset = 4;
+    let buffer = &context.current_buffer;
 
     // Main window
     term.csi("38;5;240m");
-    for row in 1..(context.rows - 1) {
+    for row in 0..(context.rows - 2) {
         term.erase_line();
-        term.write(&format!("{:width$} \r\n", row, width = offset - 1));
+        term.write(&format!("{:width$} ", row + 1, width = offset - 1));
+
+        if let Some(line) = buffer.lines.get(row) {
+            term.write(line);
+        }
+
+        term.write("\r\n");
     }
     term.csi("m");
 
@@ -233,9 +260,10 @@ struct Key(u32);
 /// ```
 ///
 fn ctrl(ch: char) -> Key {
-    Key(0x17 & (ch as u32))
+    Key(0x1f & (ch as u32))
 }
 
+#[allow(unused)]
 /// Return a key from a character.
 fn key(ch: char) -> Key {
     Key(ch as u32)
@@ -265,26 +293,28 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('q') => {
                 context.to_exit = true;
             }
-            _ if k == key('a') => {
-                if context.cursor_column > 0 {
-                    context.cursor_column -= 1;
-                }
-            }
-            _ if k == key('d') => {
+
+            _ if k == ctrl('f') => {
                 if context.cursor_column < context.columns - 4 /* offset */ - 1 {
                     context.cursor_column += 1;
                 }
             }
-            _ if k == key('s') => {
-                if context.cursor_line < context.rows - 2 - 1 {
-                    context.cursor_line += 1;
+            _ if k == ctrl('b') => {
+                if context.cursor_column > 0 {
+                    context.cursor_column -= 1;
                 }
             }
-            _ if k == key('w') => {
+            _ if k == ctrl('p') => {
                 if context.cursor_line > 0 {
                     context.cursor_line -= 1;
                 }
             }
+            _ if k == ctrl('n') => {
+                if context.cursor_line < context.rows - 2 - 1 {
+                    context.cursor_line += 1;
+                }
+            }
+
             _ => {}
         }
     }
@@ -300,6 +330,8 @@ fn main() {
 
         cursor_line: 0,
         cursor_column: 0,
+
+        current_buffer: Buffer::from_string("hello\nworld"),
 
         to_exit: false,
         to_refresh: false,
