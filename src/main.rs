@@ -207,12 +207,13 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     let buffer = &context.current_buffer;
 
     // Main window
-    term.csi("38;5;240m");
     for row in 0..(context.rows - 2) {
         term.erase_line();
+        term.csi("38;5;240m");
         term.write(&format!("{:width$} ", row + 1, width = offset - 1));
 
         if let Some(line) = buffer.lines.get(row) {
+            term.csi("m");
             term.write(line);
         }
 
@@ -220,14 +221,16 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     }
     term.csi("m");
 
-    term.save_cursor();
-    let welcome = "Welcome to the sted editor";
-    term.set_cursor(
-        context.rows / 2,
-        (context.columns - offset) / 2 - welcome.len() / 2 + offset,
-    );
-    term.write(&welcome);
-    term.restore_cursor();
+    if false {
+        term.save_cursor();
+        let welcome = "Welcome to the sted editor";
+        term.set_cursor(
+            context.rows / 2,
+            (context.columns - offset) / 2 - welcome.len() / 2 + offset,
+        );
+        term.write(&welcome);
+        term.restore_cursor();
+    }
 
     // Modeline
     if context.truecolor {
