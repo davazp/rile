@@ -116,6 +116,13 @@ struct Term {
     buffer: String,
 }
 
+#[allow(unused)]
+enum ErasePart {
+    ToEnd = 0,
+    ToStart = 1,
+    All = 2,
+}
+
 impl Term {
     fn new() -> Term {
         Term {
@@ -178,8 +185,8 @@ impl Term {
         self.csi("?25h");
     }
 
-    fn erase_line(&mut self) {
-        self.csi("2K");
+    fn erase_line(&mut self, part: ErasePart) {
+        self.csi(&format!("{}K", part as usize));
     }
 
     fn save_cursor(&mut self) {
@@ -229,8 +236,6 @@ fn refresh_screen(term: &mut Term, context: &Context) {
 
     // Main window
     for row in 0..window_lines {
-        term.erase_line();
-
         let linenum = row + context.scroll_line;
 
         if let Some(line) = buffer.lines.get(linenum) {
@@ -241,6 +246,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
 
             term.csi("m");
             term.write(&line[..cmp::min(line.len(), window_columns)]);
+            term.erase_line(ErasePart::ToEnd);
         }
 
         term.write("\r\n");
@@ -266,7 +272,6 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         term.csi("7m");
     }
 
-    term.erase_line();
     // On MacOsX's terminal, when you erase a line it won't fill the
     // full line with the current attributes, unlike ITerm. So we use
     // `write_line` to pad the string with spaces.
@@ -279,6 +284,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         ),
         window_columns,
     );
+    term.erase_line(ErasePart::ToEnd);
 
     term.show_cursor();
 
