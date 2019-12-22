@@ -400,17 +400,19 @@ fn backward_char(context: &mut Context) {
 }
 
 fn next_line(context: &mut Context) {
-    context.cursor.line += 1;
-    context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
-
-    adjust_scroll(context);
+    if context.cursor.line < context.current_buffer.lines.len() - 1 {
+        context.cursor.line += 1;
+        context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
+        adjust_scroll(context);
+    }
 }
 
 fn previous_line(context: &mut Context) {
     if context.cursor.line > 0 {
         context.cursor.line -= 1;
+        context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
+        adjust_scroll(context);
     }
-    adjust_scroll(context);
 }
 
 /// Process user input.
