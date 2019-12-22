@@ -47,6 +47,8 @@ struct Context {
 
     scroll_line: usize,
 
+    show_lines: bool,
+
     // Result of a command. They will take effect once a full command
     // has been processed.
     to_exit: bool,
@@ -208,21 +210,32 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.hide_cursor();
     term.set_cursor(1, 1);
 
-    let offset = 4;
+    let window_lines = context.rows - 2;
+
+    let offset = if context.show_lines {
+        format!("{}", context.scroll_line + window_lines).len() + 1
+    } else {
+        0
+    };
+
+    let window_columns = context.columns - offset;
+
     let buffer = &context.current_buffer;
 
     // Main window
-    for row in 0..(context.rows - 2) {
+    for row in 0..window_lines {
         term.erase_line();
 
         let linenum = row + context.scroll_line;
 
         if let Some(line) = buffer.lines.get(linenum) {
-            term.csi("38;5;240m");
-            term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
+            if context.show_lines {
+                term.csi("38;5;240m");
+                term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
+            }
 
             term.csi("m");
-            term.write(&line[..cmp::min(line.len(), context.columns - offset)]);
+            term.write(&line[..cmp::min(line.len(), window_columns)]);
         }
 
         term.write("\r\n");
@@ -234,7 +247,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         let welcome = "Welcome to the sted editor";
         term.set_cursor(
             context.rows / 2,
-            (context.columns - offset) / 2 - welcome.len() / 2 + offset,
+            window_columns / 2 - welcome.len() / 2 + offset,
         );
         term.write(&welcome);
         term.restore_cursor();
@@ -318,7 +331,7 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('p') => {
                 if context.cursor_line > 0 {
                     context.cursor_line -= 1;
-                } else {
+                } else if context.scroll_line > 0 {
                     context.scroll_line -= 1;
                 }
             }
@@ -345,6 +358,8 @@ fn main() {
 
         cursor_line: 0,
         cursor_column: 0,
+
+        show_lines: true,
 
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
         scroll_line: 0,
