@@ -8,6 +8,8 @@ use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
 
+use std::fs;
+
 use std::env;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -209,10 +211,11 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     // Main window
     for row in 0..(context.rows - 2) {
         term.erase_line();
-        term.csi("38;5;240m");
-        term.write(&format!("{:width$} ", row + 1, width = offset - 1));
 
         if let Some(line) = buffer.lines.get(row) {
+            term.csi("38;5;240m");
+            term.write(&format!("{:width$} ", row + 1, width = offset - 1));
+
             term.csi("m");
             term.write(line);
         }
@@ -334,7 +337,7 @@ fn main() {
         cursor_line: 0,
         cursor_column: 0,
 
-        current_buffer: Buffer::from_string("hello\nworld"),
+        current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
 
         to_exit: false,
         to_refresh: false,
