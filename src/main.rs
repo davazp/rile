@@ -34,6 +34,12 @@ impl Buffer {
     }
 }
 
+/// A cursor into a buffer content
+struct Cursor {
+    line: usize,
+    column: usize,
+}
+
 /// User Preferences
 struct UserPreferences {
     show_lines: bool,
@@ -45,9 +51,7 @@ struct Context {
     columns: usize,
     truecolor: bool,
 
-    cursor_line: usize,
-    cursor_column: usize,
-
+    cursor: Cursor,
     current_buffer: Buffer,
     scroll_line: usize,
 
@@ -63,7 +67,7 @@ impl Context {
     fn get_current_line(&self) -> Option<&str> {
         self.current_buffer
             .lines
-            .get(self.cursor_line)
+            .get(self.cursor.line)
             .map(|s| &s[..])
     }
 }
@@ -286,7 +290,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     // `write_line` to pad the string with spaces.
     write_line(
         term,
-        &format!("  {}   L{}", "main.rs", context.cursor_line + 1),
+        &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
         window_columns,
     );
     term.erase_line(ErasePart::ToEnd);
@@ -296,8 +300,8 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.csi("m");
 
     term.set_cursor(
-        context.cursor_line - context.scroll_line + 1,
-        context.cursor_column + offset + 1,
+        context.cursor.line - context.scroll_line + 1,
+        context.cursor.column + offset + 1,
     );
 
     term.flush()
@@ -368,42 +372,42 @@ fn move_beginning_of_line(context: &mut Context) {
         .and_then(|line| {
             line.chars()
                 .enumerate()
-                .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor_column)
+                .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor.column)
         })
         .unwrap_or(0);
-    context.cursor_column = bol;
+    context.cursor.column = bol;
 }
 
 fn move_end_of_line(context: &mut Context) {
     let eol = context.get_current_line().map_or(0, |l| l.len());
-    context.cursor_column = eol;
+    context.cursor.column = eol;
 }
 
 fn forward_char(context: &mut Context) {
-    if context.cursor_column < context.columns - 4 /* offset */ - 1 {
-        context.cursor_column += 1;
+    if context.cursor.column < context.columns - 4 /* offset */ - 1 {
+        context.cursor.column += 1;
     }
 }
 
 fn backward_char(context: &mut Context) {
-    if context.cursor_column > 0 {
-        context.cursor_column -= 1;
+    if context.cursor.column > 0 {
+        context.cursor.column -= 1;
     }
 }
 
 fn next_line(context: &mut Context) {
-    context.cursor_line += 1;
-    if context.cursor_line > context.scroll_line + context.rows - 2 - 1 {
+    context.cursor.line += 1;
+    if context.cursor.line > context.scroll_line + context.rows - 2 - 1 {
         context.scroll_line += 1;
     }
 }
 
 fn previous_line(context: &mut Context) {
-    if context.cursor_line > 0 {
-        context.cursor_line -= 1;
+    if context.cursor.line > 0 {
+        context.cursor.line -= 1;
     }
 
-    if context.cursor_line < context.scroll_line {
+    if context.cursor.line < context.scroll_line {
         context.scroll_line -= 1;
     }
 }
@@ -451,8 +455,7 @@ fn main() {
         columns,
         truecolor: support_true_color(),
 
-        cursor_line: 0,
-        cursor_column: 0,
+        cursor: Cursor { line: 0, column: 0 },
 
         preferences: UserPreferences { show_lines: true },
 
