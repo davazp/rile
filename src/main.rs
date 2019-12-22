@@ -34,6 +34,11 @@ impl Buffer {
     }
 }
 
+/// User Preferences
+struct UserPreferences {
+    show_lines: bool,
+}
+
 /// The state of the editor.
 struct Context {
     rows: usize,
@@ -44,10 +49,9 @@ struct Context {
     cursor_column: usize,
 
     current_buffer: Buffer,
-
     scroll_line: usize,
 
-    show_lines: bool,
+    preferences: UserPreferences,
 
     // Result of a command. They will take effect once a full command
     // has been processed.
@@ -212,7 +216,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
 
     let window_lines = context.rows - 2;
 
-    let offset = if context.show_lines {
+    let offset = if context.preferences.show_lines {
         let last_linenum_width = format!("{}", context.scroll_line + window_lines).len();
         last_linenum_width + 1
     } else {
@@ -230,7 +234,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         let linenum = row + context.scroll_line;
 
         if let Some(line) = buffer.lines.get(linenum) {
-            if context.show_lines {
+            if context.preferences.show_lines {
                 term.csi("38;5;240m");
                 term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
             }
@@ -364,7 +368,7 @@ fn main() {
         cursor_line: 0,
         cursor_column: 0,
 
-        show_lines: true,
+        preferences: UserPreferences { show_lines: true },
 
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
         scroll_line: 0,
