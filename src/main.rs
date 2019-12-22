@@ -265,12 +265,20 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     } else {
         term.csi("7m");
     }
+
     term.erase_line();
-    term.write(&format!(
-        "  {}   L{}",
-        "main.rs",
-        context.scroll_line + context.cursor_line + 1
-    ));
+    // On MacOsX's terminal, when you erase a line it won't fill the
+    // full line with the current attributes, unlike ITerm. So we use
+    // `write_line` to pad the string with spaces.
+    write_line(
+        term,
+        &format!(
+            "  {}   L{}",
+            "main.rs",
+            context.scroll_line + context.cursor_line + 1
+        ),
+        window_columns,
+    );
 
     term.show_cursor();
 
@@ -279,6 +287,12 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     term.set_cursor(context.cursor_line + 1, context.cursor_column + offset + 1);
 
     term.flush()
+}
+
+fn write_line(term: &mut Term, str: &str, width: usize) {
+    assert!(str.len() <= width);
+    let padded = format!("{:width$}", str, width = width);
+    term.write(&padded);
 }
 
 #[derive(PartialEq, Debug)]
