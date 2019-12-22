@@ -227,6 +227,16 @@ fn support_true_color() -> bool {
 //
 //
 
+/// Adjust the scroll level so the cursor is on the screen.
+fn adjust_scroll(context: &mut Context) {
+    if context.cursor.line < context.scroll_line {
+        context.scroll_line -= 1;
+    }
+    if context.cursor.line > context.scroll_line + context.rows - 2 - 1 {
+        context.scroll_line += 1;
+    }
+}
+
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
@@ -293,17 +303,16 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
         window_columns,
     );
-    term.erase_line(ErasePart::ToEnd);
-
-    term.show_cursor();
 
     term.csi("m");
+    write_line(term, "", window_columns);
 
     term.set_cursor(
         context.cursor.line - context.scroll_line + 1,
         context.cursor.column + offset + 1,
     );
 
+    term.show_cursor();
     term.flush()
 }
 
@@ -397,19 +406,14 @@ fn backward_char(context: &mut Context) {
 
 fn next_line(context: &mut Context) {
     context.cursor.line += 1;
-    if context.cursor.line > context.scroll_line + context.rows - 2 - 1 {
-        context.scroll_line += 1;
-    }
+    adjust_scroll(context);
 }
 
 fn previous_line(context: &mut Context) {
     if context.cursor.line > 0 {
         context.cursor.line -= 1;
     }
-
-    if context.cursor.line < context.scroll_line {
-        context.scroll_line -= 1;
-    }
+    adjust_scroll(context);
 }
 
 /// Process user input.
@@ -481,6 +485,7 @@ fn main() {
             let (rows, columns) = get_window_size();
             context.rows = rows;
             context.columns = columns;
+            adjust_scroll(&mut context);
             refresh_screen(&mut term, &context);
             was_resize.store(false, Ordering::Relaxed);
         }
