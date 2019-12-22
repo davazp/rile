@@ -10,6 +10,7 @@ use nix::unistd;
 
 use std::fs;
 
+use std::cmp;
 use std::env;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -43,6 +44,8 @@ struct Context {
     cursor_column: usize,
 
     current_buffer: Buffer,
+
+    scroll_line: usize,
 
     // Result of a command. They will take effect once a full command
     // has been processed.
@@ -212,12 +215,14 @@ fn refresh_screen(term: &mut Term, context: &Context) {
     for row in 0..(context.rows - 2) {
         term.erase_line();
 
-        if let Some(line) = buffer.lines.get(row) {
+        let linenum = row + context.scroll_line;
+
+        if let Some(line) = buffer.lines.get(linenum) {
             term.csi("38;5;240m");
-            term.write(&format!("{:width$} ", row + 1, width = offset - 1));
+            term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
 
             term.csi("m");
-            term.write(line);
+            term.write(&line[..cmp::min(line.len(), context.columns - offset)]);
         }
 
         term.write("\r\n");
@@ -313,11 +318,15 @@ fn process_user_input(context: &mut Context) {
             _ if k == ctrl('p') => {
                 if context.cursor_line > 0 {
                     context.cursor_line -= 1;
+                } else {
+                    context.scroll_line -= 1;
                 }
             }
             _ if k == ctrl('n') => {
                 if context.cursor_line < context.rows - 2 - 1 {
                     context.cursor_line += 1;
+                } else {
+                    context.scroll_line += 1;
                 }
             }
 
@@ -338,6 +347,7 @@ fn main() {
         cursor_column: 0,
 
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
+        scroll_line: 0,
 
         to_exit: false,
         to_refresh: false,
