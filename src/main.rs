@@ -442,29 +442,26 @@ fn previous_line(context: &mut Context) {
 fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
         context.to_refresh = true;
-        match k {
-            _ if k == ctrl('q') => {
-                context.to_exit = true;
-            }
-            _ if k == ctrl('a') => {
-                move_beginning_of_line(context);
-            }
-            _ if k == ctrl('e') => {
-                move_end_of_line(context);
-            }
-            _ if k == ctrl('f') => {
-                forward_char(context);
-            }
-            _ if k == ctrl('b') => {
-                backward_char(context);
-            }
-            _ if k == ctrl('p') => {
-                previous_line(context);
-            }
-            _ if k == ctrl('n') => {
-                next_line(context);
-            }
-            _ => {}
+        if k == ctrl('q') {
+            context.to_exit = true;
+        }
+        if k == ctrl('a') {
+            move_beginning_of_line(context);
+        }
+        if k == ctrl('e') {
+            move_end_of_line(context);
+        }
+        if k == ctrl('f') {
+            forward_char(context);
+        }
+        if k == ctrl('b') {
+            backward_char(context);
+        }
+        if k == ctrl('p') {
+            previous_line(context);
+        }
+        if k == ctrl('n') {
+            next_line(context);
         }
         true
     } else {
