@@ -40,17 +40,8 @@ struct Cursor {
     column: usize,
 }
 
-/// User Preferences
-struct UserPreferences {
-    show_lines: bool,
-}
-
 /// The state of the editor.
 struct Context {
-    rows: usize,
-    columns: usize,
-    truecolor: bool,
-
     /// The column that a following [`next-line`](fn.next_line.html) or
     /// [`previous_line`](fn.previous_line.html) should try to move
     /// to. This is automatically reset to `None` after each user
@@ -61,9 +52,8 @@ struct Context {
 
     cursor: Cursor,
     current_buffer: Buffer,
-    scroll_line: usize,
 
-    preferences: UserPreferences,
+    window: Window,
 
     // Result of a command. They will take effect once a full command
     // has been processed.
@@ -135,6 +125,11 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
 
 struct Term {
     buffer: String,
+    // The size of the terminal
+    rows: usize,
+    columns: usize,
+
+    truecolor: bool,
 }
 
 /// Specify which part of the terminal to erase.
@@ -150,8 +145,12 @@ enum ErasePart {
 
 impl Term {
     fn new() -> Term {
+        let (rows, columns) = get_window_size();
         Term {
             buffer: String::new(),
+            rows,
+            columns,
+            truecolor: support_true_color(),
         }
     }
 
@@ -214,9 +213,12 @@ impl Term {
         self.csi(&format!("{}K", part as usize));
     }
 
+    #[allow(unused)]
     fn save_cursor(&mut self) {
         self.csi("s");
     }
+
+    #[allow(unused)]
     fn restore_cursor(&mut self) {
         self.csi("u");
     }
@@ -240,30 +242,94 @@ fn support_true_color() -> bool {
 //
 
 /// Adjust the scroll level so the cursor is on the screen.
-fn adjust_scroll(context: &mut Context) {
-    if context.cursor.line < context.scroll_line {
-        context.scroll_line -= 1;
+fn adjust_scroll(term: &Term, context: &mut Context) {
+    if context.cursor.line < context.window.scroll_line {
+        context.window.scroll_line -= 1;
     }
-    if context.cursor.line > context.scroll_line + context.rows - 2 - 1 {
-        context.scroll_line += 1;
+    if context.cursor.line > context.window.scroll_line + term.rows - 2 - 1 {
+        context.window.scroll_line += 1;
     }
 }
 
-fn render_modeline(term: &mut Term, context: &Context) {
-    if context.truecolor {
-        term.csi(&format!("38;5;0m"));
-        term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
-    } else {
-        term.csi("7m");
+struct Window {
+    scroll_line: usize,
+    show_lines: bool,
+}
+impl Window {
+    fn get_window_lines(&self, term: &Term) -> usize {
+        term.rows - 2
     }
-    // On MacOsX's terminal, when you erase a line it won't fill the
-    // full line with the current attributes, unlike ITerm. So we use
-    // `write_line` to pad the string with spaces.
-    write_line(
-        term,
-        &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
-        context.columns,
-    );
+
+    fn get_pad_width(&self, term: &Term) -> usize {
+        if self.show_lines {
+            let last_linenum_width =
+                format!("{}", self.scroll_line + self.get_window_lines(term)).len();
+            last_linenum_width + 1
+        } else {
+            0
+        }
+    }
+
+    fn render_cursor(&self, term: &mut Term, context: &Context) {
+        term.set_cursor(
+            context.cursor.line - self.scroll_line + 1,
+            context.cursor.column + self.get_pad_width(term) + 1,
+        );
+    }
+
+    fn render_window(&self, term: &mut Term, context: &Context) {
+        let offset = self.get_pad_width(term);
+        let window_columns = term.columns - offset;
+
+        term.set_cursor(1, 1);
+
+        let window_lines = term.rows - 2;
+
+        let offset = self.get_pad_width(term);
+
+        let buffer = &context.current_buffer;
+
+        // Main window
+        for row in 0..window_lines {
+            let linenum = row + self.scroll_line;
+
+            if let Some(line) = buffer.lines.get(linenum) {
+                if self.show_lines {
+                    term.csi("38;5;240m");
+                    term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
+                }
+
+                term.csi("m");
+                term.write(&line[..cmp::min(line.len(), window_columns)]);
+                term.erase_line(ErasePart::ToEnd);
+            }
+
+            term.write("\r\n");
+        }
+        term.csi("m");
+    }
+
+    fn render_modeline(&self, term: &mut Term, context: &Context) {
+        if term.truecolor {
+            term.csi(&format!("38;5;0m"));
+            term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
+        } else {
+            term.csi("7m");
+        }
+        // On MacOsX's terminal, when you erase a line it won't fill the
+        // full line with the current attributes, unlike ITerm. So we use
+        // `write_line` to pad the string with spaces.
+        write_line(
+            term,
+            &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
+            term.columns,
+        );
+    }
+}
+
+fn render_minibuffer(term: &mut Term, _context: &Context) {
+    term.csi("m");
+    write_line(term, "", term.columns);
 }
 
 /// Refresh the screen.
@@ -271,60 +337,14 @@ fn render_modeline(term: &mut Term, context: &Context) {
 /// Ensure the terminal reflects the latest state of the editor.
 fn refresh_screen(term: &mut Term, context: &Context) {
     term.hide_cursor();
-    term.set_cursor(1, 1);
 
-    let window_lines = context.rows - 2;
+    let win = &context.window;
 
-    let offset = if context.preferences.show_lines {
-        let last_linenum_width = format!("{}", context.scroll_line + window_lines).len();
-        last_linenum_width + 1
-    } else {
-        0
-    };
+    win.render_window(term, context);
+    win.render_modeline(term, context);
+    render_minibuffer(term, context);
 
-    let window_columns = context.columns - offset;
-
-    let buffer = &context.current_buffer;
-
-    // Main window
-    for row in 0..window_lines {
-        let linenum = row + context.scroll_line;
-
-        if let Some(line) = buffer.lines.get(linenum) {
-            if context.preferences.show_lines {
-                term.csi("38;5;240m");
-                term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
-            }
-
-            term.csi("m");
-            term.write(&line[..cmp::min(line.len(), window_columns)]);
-            term.erase_line(ErasePart::ToEnd);
-        }
-
-        term.write("\r\n");
-    }
-    term.csi("m");
-
-    if false {
-        term.save_cursor();
-        let welcome = "Welcome to the sted editor";
-        term.set_cursor(
-            context.rows / 2,
-            window_columns / 2 - welcome.len() / 2 + offset,
-        );
-        term.write(&welcome);
-        term.restore_cursor();
-    }
-
-    render_modeline(term, context);
-
-    term.csi("m");
-    write_line(term, "", window_columns);
-
-    term.set_cursor(
-        context.cursor.line - context.scroll_line + 1,
-        context.cursor.column + offset + 1,
-    );
+    win.render_cursor(term, context);
 
     term.show_cursor();
     term.flush()
@@ -438,7 +458,6 @@ fn next_line(context: &mut Context) {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line += 1;
         context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
-        adjust_scroll(context);
     }
 }
 
@@ -447,7 +466,6 @@ fn previous_line(context: &mut Context) {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line -= 1;
         context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
-        adjust_scroll(context);
     }
 }
 
@@ -484,19 +502,16 @@ fn process_user_input(context: &mut Context) -> bool {
 
 /// The main entry point of the editor.
 fn main() {
-    let (rows, columns) = get_window_size();
     let mut context = Context {
-        rows,
-        columns,
-        truecolor: support_true_color(),
-
         goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
-        preferences: UserPreferences { show_lines: true },
-
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
-        scroll_line: 0,
+
+        window: Window {
+            show_lines: true,
+            scroll_line: 0,
+        },
 
         to_exit: false,
         to_refresh: false,
@@ -516,9 +531,9 @@ fn main() {
     with_raw_mode(|| loop {
         if was_resize.load(Ordering::Relaxed) {
             let (rows, columns) = get_window_size();
-            context.rows = rows;
-            context.columns = columns;
-            adjust_scroll(&mut context);
+            term.rows = rows;
+            term.columns = columns;
+            adjust_scroll(&mut term, &mut context);
             refresh_screen(&mut term, &context);
             was_resize.store(false, Ordering::Relaxed);
         }
@@ -535,6 +550,7 @@ fn main() {
         }
 
         if context.to_refresh {
+            adjust_scroll(&mut term, &mut context);
             refresh_screen(&mut term, &context);
         }
 
