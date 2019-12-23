@@ -493,6 +493,11 @@ fn insert_char(context: &mut Context, ch: char) {
     context.cursor.column += 1;
 }
 
+fn delete_char(context: &mut Context) {
+    forward_char(context);
+    delete_backward_char(context);
+}
+
 fn delete_backward_char(context: &mut Context) {
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
@@ -507,6 +512,15 @@ fn delete_backward_char(context: &mut Context) {
 
         context.cursor.line -= 1;
         context.cursor.column = previous_line_original_length;
+    }
+}
+
+fn kill_line(context: &mut Context) {
+    let line = &mut context.current_buffer.lines[context.cursor.line];
+    if context.cursor.column == line.len() {
+        delete_char(context);
+    } else {
+        line.drain(context.cursor.column..);
     }
 }
 
@@ -528,8 +542,12 @@ fn process_user_input(context: &mut Context) -> bool {
             previous_line(context);
         } else if k == ctrl('n') {
             next_line(context);
+        } else if k == ctrl('d') {
+            delete_char(context);
         } else if k == DELETE {
             delete_backward_char(context);
+        } else if k == ctrl('k') {
+            kill_line(context);
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
