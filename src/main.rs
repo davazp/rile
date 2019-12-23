@@ -428,8 +428,9 @@ fn forward_char(context: &mut Context) {
     if context.cursor.column < len {
         context.cursor.column += 1;
     } else {
-        context.cursor.column = 0;
-        next_line(context);
+        if next_line(context) {
+            context.cursor.column = 0;
+        };
     }
 }
 
@@ -437,8 +438,9 @@ fn backward_char(context: &mut Context) {
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
     } else {
-        previous_line(context);
-        move_end_of_line(context);
+        if previous_line(context) {
+            move_end_of_line(context);
+        };
     }
 }
 
@@ -449,19 +451,25 @@ fn get_or_set_gaol_column(context: &mut Context) -> usize {
     *context.goal_column.get_or_insert(context.cursor.column)
 }
 
-fn next_line(context: &mut Context) {
+fn next_line(context: &mut Context) -> bool {
     if context.cursor.line < context.current_buffer.lines.len() - 1 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line += 1;
         context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
+        true
+    } else {
+        false
     }
 }
 
-fn previous_line(context: &mut Context) {
+fn previous_line(context: &mut Context) -> bool {
     if context.cursor.line > 0 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line -= 1;
         context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
+        true
+    } else {
+        false
     }
 }
 
