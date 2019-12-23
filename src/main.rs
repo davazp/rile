@@ -249,6 +249,23 @@ fn adjust_scroll(context: &mut Context) {
     }
 }
 
+fn render_modeline(term: &mut Term, context: &Context) {
+    if context.truecolor {
+        term.csi(&format!("38;5;0m"));
+        term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
+    } else {
+        term.csi("7m");
+    }
+    // On MacOsX's terminal, when you erase a line it won't fill the
+    // full line with the current attributes, unlike ITerm. So we use
+    // `write_line` to pad the string with spaces.
+    write_line(
+        term,
+        &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
+        context.columns,
+    );
+}
+
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
@@ -299,22 +316,7 @@ fn refresh_screen(term: &mut Term, context: &Context) {
         term.restore_cursor();
     }
 
-    // Modeline
-    if context.truecolor {
-        term.csi(&format!("38;5;0m"));
-        term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
-    } else {
-        term.csi("7m");
-    }
-
-    // On MacOsX's terminal, when you erase a line it won't fill the
-    // full line with the current attributes, unlike ITerm. So we use
-    // `write_line` to pad the string with spaces.
-    write_line(
-        term,
-        &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
-        window_columns,
-    );
+    render_modeline(term, context);
 
     term.csi("m");
     write_line(term, "", window_columns);
