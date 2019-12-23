@@ -51,6 +51,12 @@ struct Context {
     columns: usize,
     truecolor: bool,
 
+    /// The column that a following `next_line` or `previous_line`
+    /// should try to move to. This is automatically reset to None
+    /// after each user command is processed, unless
+    /// `to_preserve_goal_column` is set to true by the command.
+    goal_column: Option<usize>,
+
     cursor: Cursor,
     current_buffer: Buffer,
     scroll_line: usize,
@@ -61,6 +67,9 @@ struct Context {
     // has been processed.
     to_exit: bool,
     to_refresh: bool,
+
+    /// If set by a command, `goal_column` won't be reset after it.
+    to_preserve_goal_column: bool,
 }
 
 impl Context {
@@ -399,24 +408,33 @@ fn backward_char(context: &mut Context) {
     }
 }
 
+fn get_or_set_gaol_column(context: &mut Context) -> usize {
+    // We set `to_preserve_goal_column` to ensure the goal_column is
+    // not lost for the next command.
+    context.to_preserve_goal_column = true;
+    *context.goal_column.get_or_insert(context.cursor.column)
+}
+
 fn next_line(context: &mut Context) {
     if context.cursor.line < context.current_buffer.lines.len() - 1 {
+        let goal_column = get_or_set_gaol_column(context);
         context.cursor.line += 1;
-        context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
+        context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
         adjust_scroll(context);
     }
 }
 
 fn previous_line(context: &mut Context) {
     if context.cursor.line > 0 {
+        let goal_column = get_or_set_gaol_column(context);
         context.cursor.line -= 1;
-        context.cursor.column = cmp::min(context.get_current_line().len(), context.cursor.column);
+        context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
         adjust_scroll(context);
     }
 }
 
 /// Process user input.
-fn process_user_input(context: &mut Context) {
+fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
         context.to_refresh = true;
         match k {
@@ -443,6 +461,9 @@ fn process_user_input(context: &mut Context) {
             }
             _ => {}
         }
+        true
+    } else {
+        false
     }
 }
 
@@ -454,6 +475,7 @@ fn main() {
         columns,
         truecolor: support_true_color(),
 
+        goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
         preferences: UserPreferences { show_lines: true },
@@ -463,6 +485,7 @@ fn main() {
 
         to_exit: false,
         to_refresh: false,
+        to_preserve_goal_column: false,
     };
 
     // Detect when the terminal was resized
@@ -485,7 +508,12 @@ fn main() {
             was_resize.store(false, Ordering::Relaxed);
         }
 
-        process_user_input(&mut context);
+        context.to_preserve_goal_column = false;
+        context.to_refresh = false;
+
+        if !process_user_input(&mut context) {
+            continue;
+        }
 
         if context.to_exit {
             break;
@@ -493,7 +521,10 @@ fn main() {
 
         if context.to_refresh {
             refresh_screen(&mut term, &context);
-            context.to_refresh = false;
+        }
+
+        if !context.to_preserve_goal_column {
+            context.goal_column = None;
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
