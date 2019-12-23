@@ -51,10 +51,12 @@ struct Context {
     columns: usize,
     truecolor: bool,
 
-    /// The column that a following `next_line` or `previous_line`
-    /// should try to move to. This is automatically reset to None
-    /// after each user command is processed, unless
-    /// `to_preserve_goal_column` is set to true by the command.
+    /// The column that a following [`next-line`](fn.next_line.html) or
+    /// [`previous_line`](fn.previous_line.html) should try to move
+    /// to. This is automatically reset to `None` after each user
+    /// command is processed, unless
+    /// [`to_preserve_goal_column`](#structfield.to_preserve_goal_column)
+    /// is set to true by the command.
     goal_column: Option<usize>,
 
     cursor: Cursor,
@@ -68,7 +70,7 @@ struct Context {
     to_exit: bool,
     to_refresh: bool,
 
-    /// If set by a command, `goal_column` won't be reset after it.
+    /// If set by a command, [`goal_column`](#structfield.goal_column) won't be reset after it.
     to_preserve_goal_column: bool,
 }
 
@@ -135,10 +137,14 @@ struct Term {
     buffer: String,
 }
 
+/// Specify which part of the terminal to erase.
 #[allow(unused)]
 enum ErasePart {
+    /// Remove from the cursor until the end of the line/screen.
     ToEnd = 0,
+    /// Remove from the beginning of the line/screen up to the cursor.
     ToStart = 1,
+    /// Remove the full line/screen.
     All = 2,
 }
 
@@ -165,9 +171,9 @@ impl Term {
     /// Enable the alternative screen buffer.
     ///
     /// It will switch to a screen buffer with no scrolling. You can
-    /// restore the previous screen buffer, including all the content and
-    /// scroll level of the terminal back by calling
-    /// `disable_alternative_screen_buffer`.
+    /// restore the previous screen buffer, including all the content
+    /// and scroll level of the terminal back by calling
+    /// [`disable_alternative_screen_buffer`](fn.disable_alternative_screen_buffer.html).
     fn enable_alternative_screen_buffer(&mut self) {
         self.csi("?1049h");
     }
@@ -175,8 +181,8 @@ impl Term {
     /// Disable the the alternative screen buffer.
     ///
     /// Switch back to the screen buffer when
-    /// `enable_alternative_screen_buffer` was invoked. Restoring the
-    /// content of the screen.
+    /// [`enable_alternative_screen_buffer`](fn.enable_alternative_screen_buffer.html)
+    /// was invoked. Restoring the content of the screen.
     fn disable_alternative_screen_buffer(&mut self) {
         self.csi("?1049l");
     }
@@ -349,17 +355,16 @@ fn key(ch: char) -> Key {
     Key(ch as u32)
 }
 
-/// Read and return a key.
-///
-/// If no key is entered by the user, the function will timeout and it
-/// will return None instead.
-///
-
 const ARROW_UP: &'static [u8; 2] = b"[A";
 const ARROW_DOWN: &'static [u8; 2] = b"[B";
 const ARROW_RIGHT: &'static [u8; 2] = b"[C";
 const ARROW_LEFT: &'static [u8; 2] = b"[D";
 
+/// Read and return a key.
+///
+/// If no key is entered by the user, the function will timeout and it
+/// will return None instead.
+///
 fn read_key() -> Option<Key> {
     let mut buf = [0u8];
     unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
