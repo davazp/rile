@@ -53,8 +53,6 @@ struct Context {
     cursor: Cursor,
     current_buffer: Buffer,
 
-    window: Window,
-
     // Result of a command. They will take effect once a full command
     // has been processed.
     to_exit: bool,
@@ -242,12 +240,12 @@ fn support_true_color() -> bool {
 //
 
 /// Adjust the scroll level so the cursor is on the screen.
-fn adjust_scroll(term: &Term, context: &mut Context) {
-    if context.cursor.line < context.window.scroll_line {
-        context.window.scroll_line -= 1;
+fn adjust_scroll(term: &Term, window: &mut Window, context: &mut Context) {
+    if context.cursor.line < window.scroll_line {
+        window.scroll_line -= 1;
     }
-    if context.cursor.line > context.window.scroll_line + term.rows - 2 - 1 {
-        context.window.scroll_line += 1;
+    if context.cursor.line > window.scroll_line + term.rows - 2 - 1 {
+        window.scroll_line += 1;
     }
 }
 
@@ -335,10 +333,8 @@ fn render_minibuffer(term: &mut Term, _context: &Context) {
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-fn refresh_screen(term: &mut Term, context: &Context) {
+fn refresh_screen(term: &mut Term, win: &Window, context: &Context) {
     term.hide_cursor();
-
-    let win = &context.window;
 
     win.render_window(term, context);
     win.render_modeline(term, context);
@@ -507,15 +503,14 @@ fn main() {
         cursor: Cursor { line: 0, column: 0 },
 
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
-
-        window: Window {
-            show_lines: true,
-            scroll_line: 0,
-        },
-
         to_exit: false,
         to_refresh: false,
         to_preserve_goal_column: false,
+    };
+
+    let mut window = Window {
+        show_lines: true,
+        scroll_line: 0,
     };
 
     // Detect when the terminal was resized
@@ -526,15 +521,15 @@ fn main() {
 
     term.enable_alternative_screen_buffer();
 
-    refresh_screen(&mut term, &context);
+    refresh_screen(&mut term, &mut window, &context);
 
     with_raw_mode(|| loop {
         if was_resize.load(Ordering::Relaxed) {
             let (rows, columns) = get_window_size();
             term.rows = rows;
             term.columns = columns;
-            adjust_scroll(&mut term, &mut context);
-            refresh_screen(&mut term, &context);
+            adjust_scroll(&mut term, &mut window, &mut context);
+            refresh_screen(&mut term, &mut window, &context);
             was_resize.store(false, Ordering::Relaxed);
         }
 
@@ -550,8 +545,8 @@ fn main() {
         }
 
         if context.to_refresh {
-            adjust_scroll(&mut term, &mut context);
-            refresh_screen(&mut term, &context);
+            adjust_scroll(&mut term, &mut window, &mut context);
+            refresh_screen(&mut term, &mut window, &context);
         }
 
         if !context.to_preserve_goal_column {
