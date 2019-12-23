@@ -386,14 +386,18 @@ fn read_key() -> Option<Key> {
     }
 }
 
+fn get_line_indentation(line: &str) -> usize {
+    line.chars().position(|ch| !ch.is_whitespace()).unwrap_or(0)
+}
+
 fn move_beginning_of_line(context: &mut Context) {
     let line = context.get_current_line();
-    let bol = line
-        .chars()
-        .enumerate()
-        .position(|(idx, ch)| !ch.is_whitespace() && idx < context.cursor.column)
-        .unwrap_or(0);
-    context.cursor.column = bol;
+    let indentation = get_line_indentation(line);
+    context.cursor.column = if context.cursor.column <= indentation {
+        0
+    } else {
+        indentation
+    };
 }
 
 fn move_end_of_line(context: &mut Context) {
@@ -402,14 +406,21 @@ fn move_end_of_line(context: &mut Context) {
 }
 
 fn forward_char(context: &mut Context) {
-    if context.cursor.column < context.columns - 4 /* offset */ - 1 {
+    let len = context.get_current_line().len();
+    if context.cursor.column < len {
         context.cursor.column += 1;
+    } else {
+        context.cursor.column = 0;
+        next_line(context);
     }
 }
 
 fn backward_char(context: &mut Context) {
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
+    } else {
+        previous_line(context);
+        move_end_of_line(context);
     }
 }
 
