@@ -10,6 +10,7 @@ use nix::unistd;
 
 use std::fs;
 
+use std::char;
 use std::cmp;
 use std::env;
 use std::mem;
@@ -65,6 +66,9 @@ struct Context {
 impl Context {
     fn current_line(&self) -> &str {
         &self.current_buffer.lines[self.cursor.line]
+    }
+    fn current_line_as_mut(&mut self) -> &mut String {
+        &mut self.current_buffer.lines[self.cursor.line]
     }
 }
 
@@ -373,6 +377,13 @@ fn key(ch: char) -> Key {
     Key(ch as u32)
 }
 
+impl Key {
+    /// Return a character if the key represents a non-control character.
+    fn as_char(&self) -> Option<char> {
+        char::from_u32(self.0).filter(|ch| !ch.is_control())
+    }
+}
+
 const ARROW_UP: &'static [u8; 2] = b"[A";
 const ARROW_DOWN: &'static [u8; 2] = b"[B";
 const ARROW_RIGHT: &'static [u8; 2] = b"[C";
@@ -473,30 +484,35 @@ fn previous_line(context: &mut Context) -> bool {
     }
 }
 
+fn insert_char(context: &mut Context, ch: char) {
+    let idx = context.cursor.column;
+    let line = context.current_line_as_mut();
+    line.insert(idx, ch);
+    context.cursor.column += 1;
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
         context.to_refresh = true;
         if k == ctrl('q') {
             context.to_exit = true;
-        }
-        if k == ctrl('a') {
+        } else if k == ctrl('a') {
             move_beginning_of_line(context);
-        }
-        if k == ctrl('e') {
+        } else if k == ctrl('e') {
             move_end_of_line(context);
-        }
-        if k == ctrl('f') {
+        } else if k == ctrl('f') {
             forward_char(context);
-        }
-        if k == ctrl('b') {
+        } else if k == ctrl('b') {
             backward_char(context);
-        }
-        if k == ctrl('p') {
+        } else if k == ctrl('p') {
             previous_line(context);
-        }
-        if k == ctrl('n') {
+        } else if k == ctrl('n') {
             next_line(context);
+        } else {
+            if let Some(ch) = k.as_char() {
+                insert_char(context, ch)
+            }
         }
         true
     } else {
