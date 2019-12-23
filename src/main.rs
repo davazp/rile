@@ -389,6 +389,8 @@ const ARROW_DOWN: &'static [u8; 2] = b"[B";
 const ARROW_RIGHT: &'static [u8; 2] = b"[C";
 const ARROW_LEFT: &'static [u8; 2] = b"[D";
 
+const DELETE: Key = Key(127);
+
 /// Read and return a key.
 ///
 /// If no key is entered by the user, the function will timeout and it
@@ -491,6 +493,23 @@ fn insert_char(context: &mut Context, ch: char) {
     context.cursor.column += 1;
 }
 
+fn delete_backward_char(context: &mut Context) {
+    if context.cursor.column > 0 {
+        context.cursor.column -= 1;
+        context.current_buffer.lines[context.cursor.line].remove(context.cursor.column);
+    } else if context.cursor.line > 0 {
+        let lines = &mut context.current_buffer.lines;
+        let line = lines.remove(context.cursor.line);
+
+        let previous_line = &mut lines[context.cursor.line - 1];
+        let previous_line_original_length = previous_line.len();
+        previous_line.push_str(&line);
+
+        context.cursor.line -= 1;
+        context.cursor.column = previous_line_original_length;
+    }
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
@@ -509,6 +528,8 @@ fn process_user_input(context: &mut Context) -> bool {
             previous_line(context);
         } else if k == ctrl('n') {
             next_line(context);
+        } else if k == DELETE {
+            delete_backward_char(context);
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
