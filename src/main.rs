@@ -63,7 +63,7 @@ struct Context {
 }
 
 impl Context {
-    fn get_current_line(&self) -> &str {
+    fn current_line(&self) -> &str {
         &self.current_buffer.lines[self.cursor.line]
     }
 }
@@ -409,7 +409,7 @@ fn get_line_indentation(line: &str) -> usize {
 }
 
 fn move_beginning_of_line(context: &mut Context) {
-    let line = context.get_current_line();
+    let line = context.current_line();
     let indentation = get_line_indentation(line);
     context.cursor.column = if context.cursor.column <= indentation {
         0
@@ -419,12 +419,12 @@ fn move_beginning_of_line(context: &mut Context) {
 }
 
 fn move_end_of_line(context: &mut Context) {
-    let eol = context.get_current_line().len();
+    let eol = context.current_line().len();
     context.cursor.column = eol;
 }
 
 fn forward_char(context: &mut Context) {
-    let len = context.get_current_line().len();
+    let len = context.current_line().len();
     if context.cursor.column < len {
         context.cursor.column += 1;
     } else {
@@ -455,7 +455,7 @@ fn next_line(context: &mut Context) -> bool {
     if context.cursor.line < context.current_buffer.lines.len() - 1 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line += 1;
-        context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
+        context.cursor.column = cmp::min(context.current_line().len(), goal_column);
         true
     } else {
         false
@@ -466,7 +466,7 @@ fn previous_line(context: &mut Context) -> bool {
     if context.cursor.line > 0 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line -= 1;
-        context.cursor.column = cmp::min(context.get_current_line().len(), goal_column);
+        context.cursor.column = cmp::min(context.current_line().len(), goal_column);
         true
     } else {
         false
