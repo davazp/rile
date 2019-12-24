@@ -84,7 +84,7 @@ struct Context {
     cursor: Cursor,
     current_buffer: Buffer,
 
-    message: Option<String>,
+    minibuffer: Buffer,
 
     // Result of a command. They will take effect once a full command
     // has been processed.
@@ -344,7 +344,7 @@ impl Window {
     }
 
     fn render_modeline(&self, term: &mut Term, context: &Context) {
-        if term.truecolor {
+        if false && term.truecolor {
             term.csi(&format!("38;5;0m"));
             term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
         } else {
@@ -374,7 +374,7 @@ fn render_minibuffer(term: &mut Term, context: &Context) {
     term.csi("m");
     write_line(
         term,
-        &format!("{}", context.message.as_ref().unwrap_or(&String::from(""))),
+        &format!("{}", context.minibuffer.to_string()),
         term.columns,
     );
 }
@@ -593,14 +593,14 @@ fn save_buffer(context: &mut Context) {
     if let Some(filename) = &buffer.filename {
         match fs::write(filename, contents) {
             Ok(_) => {
-                context.message = Some(format!("Wrote {}", filename));
+                context.minibuffer = Buffer::from_string(&format!("Wrote {}", filename));
             }
             Err(_) => {
-                context.message = Some("Could not save file".to_string());
+                context.minibuffer = Buffer::from_string("Could not save file");
             }
         }
     } else {
-        context.message = Some("No file".to_string());
+        context.minibuffer = Buffer::from_string("No file");
     }
 }
 
@@ -631,7 +631,7 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
     } else if k == TAB {
         indent_line(context);
     } else if k == ctrl('x') {
-        context.message = Some("C-x ".to_string());
+        context.minibuffer = Buffer::from_string("C-x ");
         refresh_screen(term, win, context);
         let k = read_key();
         if k == ctrl('c') {
@@ -643,7 +643,7 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         if let Some(ch) = k.as_char() {
             insert_char(context, ch)
         } else {
-            context.message = Some(format!("{:?}", k));
+            context.minibuffer = Buffer::from_string(&format!("{:?}", k));
         }
     }
 }
@@ -670,7 +670,7 @@ fn main() {
         goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
-        message: None,
+        minibuffer: Buffer::new(),
         current_buffer: if let Some(filename) = file_arg {
             Buffer::from_file(filename)
         } else {
@@ -716,7 +716,7 @@ fn main() {
             refresh_screen(&mut term, &mut window, &context);
         }
 
-        context.message = None;
+        context.minibuffer = Buffer::new();
 
         if !context.to_preserve_goal_column {
             context.goal_column = None;
