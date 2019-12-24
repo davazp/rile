@@ -54,6 +54,8 @@ struct Context {
     cursor: Cursor,
     current_buffer: Buffer,
 
+    message: Option<String>,
+
     // Result of a command. They will take effect once a full command
     // has been processed.
     to_exit: bool,
@@ -329,9 +331,13 @@ impl Window {
     }
 }
 
-fn render_minibuffer(term: &mut Term, _context: &Context) {
+fn render_minibuffer(term: &mut Term, context: &Context) {
     term.csi("m");
-    write_line(term, "", term.columns);
+    write_line(
+        term,
+        &format!("{}", context.message.as_ref().unwrap_or(&String::from(""))),
+        term.columns,
+    );
 }
 
 /// Refresh the screen.
@@ -551,6 +557,8 @@ fn process_user_input(context: &mut Context) -> bool {
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
+            } else {
+                context.message = Some(format!("{:?}", k));
             }
         }
         true
@@ -565,6 +573,7 @@ fn main() {
         goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
+        message: None,
         current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
         to_exit: false,
         to_refresh: false,
