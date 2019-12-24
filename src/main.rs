@@ -317,9 +317,9 @@ impl Window {
 
                 term.csi("m");
                 term.write(&line[..cmp::min(line.len(), window_columns)]);
-                term.erase_line(ErasePart::ToEnd);
             }
 
+            term.erase_line(ErasePart::ToEnd);
             term.write("\r\n");
         }
         term.csi("m");
@@ -545,7 +545,9 @@ fn delete_backward_char(context: &mut Context) {
 fn kill_line(context: &mut Context) {
     let line = &mut context.current_buffer.lines[context.cursor.line];
     if context.cursor.column == line.len() {
-        delete_char(context);
+        if context.cursor.line < context.current_buffer.lines.len() - 1 {
+            delete_char(context);
+        }
     } else {
         line.drain(context.cursor.column..);
     }
