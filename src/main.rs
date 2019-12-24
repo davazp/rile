@@ -16,6 +16,11 @@ use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+const PKG_NAME: &'static str = env!("CARGO_PKG_NAME");
+const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const PKG_HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
+const PKG_GIT_COMMIT: Option<&'static str> = option_env!("GIT_COMMIT");
+
 /// A buffer contains text that can be edited.
 struct Buffer {
     filename: Option<String>,
@@ -610,6 +615,17 @@ fn process_user_input(context: &mut Context) -> bool {
 /// The main entry point of the editor.
 fn main() {
     let file_arg = env::args().nth(1);
+
+    if file_arg.as_deref() == Some("-v") {
+        println!(
+            "{} {} ({})",
+            PKG_NAME,
+            PKG_VERSION,
+            PKG_GIT_COMMIT.map(|c| &c[0..8]).unwrap_or("unknown")
+        );
+        println!("For futher info, visit {}", PKG_HOMEPAGE);
+        return;
+    }
 
     let mut context = Context {
         goal_column: None,
