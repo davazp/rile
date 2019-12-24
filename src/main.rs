@@ -436,6 +436,7 @@ const ARROW_LEFT: &'static [u8; 2] = b"[D";
 
 const DELETE: Key = Key(127);
 const RET: Key = Key(13);
+const TAB: Key = Key(9);
 
 /// Read and return a key.
 ///
@@ -584,6 +585,14 @@ fn newline(context: &mut Context) {
     context.cursor.column = 0;
 }
 
+fn indent_line(context: &mut Context) {
+    let line = &context.current_buffer.lines[context.cursor.line];
+    let indent = get_line_indentation(line);
+    if context.cursor.column < indent {
+        context.cursor.column = indent;
+    }
+}
+
 fn save_buffer(context: &mut Context) {
     let buffer = &context.current_buffer;
     let contents = buffer.to_string();
@@ -629,6 +638,8 @@ fn process_user_input(context: &mut Context) -> bool {
             newline(context);
         } else if k == ctrl('s') {
             save_buffer(context);
+        } else if k == TAB {
+            indent_line(context);
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
