@@ -626,7 +626,7 @@ fn process_user_input(context: &mut Context) {
         delete_backward_char(context);
     } else if k == ctrl('k') {
         kill_line(context);
-    } else if k == RET {
+    } else if k == RET || k == ctrl('j') {
         newline(context);
     } else if k == TAB {
         indent_line(context);
