@@ -16,9 +16,12 @@ use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use clap::{App, Arg};
+
 const PKG_NAME: &'static str = env!("CARGO_PKG_NAME");
 const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const PKG_HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
+const PKG_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
+const PKG_DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const PKG_GIT_COMMIT: Option<&'static str> = option_env!("GIT_COMMIT");
 
 /// A buffer contains text that can be edited.
@@ -51,13 +54,13 @@ impl Buffer {
     fn new() -> Buffer {
         Buffer::from_string("")
     }
-    fn from_file(file: String) -> Buffer {
+    fn from_file(file: &str) -> Buffer {
         let content = match fs::read_to_string(&file) {
             Ok(content) => content,
             Err(_) => String::from(""),
         };
         let mut buffer = Buffer::from_string(&content);
-        buffer.filename = Some(file);
+        buffer.filename = Some(file.to_string());
         buffer
     }
 }
@@ -641,18 +644,21 @@ fn process_user_input(context: &mut Context) -> bool {
 
 /// The main entry point of the editor.
 fn main() {
-    let file_arg = env::args().nth(1);
+    let matches = App::new(PKG_NAME)
+        .version(
+            format!(
+                "{} (git: {})",
+                PKG_VERSION,
+                PKG_GIT_COMMIT.map(|c| &c[0..8]).unwrap_or("unknown")
+            )
+            .as_ref(),
+        )
+        .author(PKG_AUTHORS)
+        .about(PKG_DESCRIPTION)
+        .arg(Arg::with_name("FILE").help("Input file").index(1))
+        .get_matches();
 
-    if file_arg.as_deref() == Some("-v") {
-        println!(
-            "{} {} ({})",
-            PKG_NAME,
-            PKG_VERSION,
-            PKG_GIT_COMMIT.map(|c| &c[0..8]).unwrap_or("unknown")
-        );
-        println!("For futher info, visit {}", PKG_HOMEPAGE);
-        return;
-    }
+    let file_arg = matches.value_of("FILE");
 
     let mut context = Context {
         goal_column: None,
