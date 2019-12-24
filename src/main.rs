@@ -338,12 +338,13 @@ impl Window {
         write_line(
             term,
             &format!(
-                "  {}   L{}",
+                "  {}  {}% L{}",
                 context
                     .current_buffer
                     .filename
                     .as_ref()
                     .unwrap_or(&"*scratch*".to_string()),
+                100 * (context.cursor.line + 1) / context.current_buffer.lines.len(),
                 context.cursor.line + 1
             ),
             term.columns,
