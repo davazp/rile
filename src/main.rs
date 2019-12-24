@@ -19,18 +19,30 @@ use std::sync::Arc;
 
 /// A buffer contains text that can be edited.
 struct Buffer {
+    filename: Option<String>,
     lines: Vec<String>,
 }
 
 impl Buffer {
     #[allow(unused)]
     fn new() -> Buffer {
-        Buffer { lines: Vec::new() }
+        Buffer {
+            lines: Vec::new(),
+            filename: None,
+        }
+    }
+
+    fn from_file(file: String) -> Buffer {
+        let content = fs::read_to_string(&file).expect("not found.");
+        let mut buffer = Buffer::from_string(&content);
+        buffer.filename = Some(file);
+        buffer
     }
 
     fn from_string(str: &str) -> Buffer {
         Buffer {
             lines: str.lines().map(String::from).collect(),
+            filename: None,
         }
     }
 }
@@ -325,7 +337,15 @@ impl Window {
         // `write_line` to pad the string with spaces.
         write_line(
             term,
-            &format!("  {}   L{}", "main.rs", context.cursor.line + 1),
+            &format!(
+                "  {}   L{}",
+                context
+                    .current_buffer
+                    .filename
+                    .as_ref()
+                    .unwrap_or(&"*scratch*".to_string()),
+                context.cursor.line + 1
+            ),
             term.columns,
         );
     }
@@ -584,12 +604,18 @@ fn process_user_input(context: &mut Context) -> bool {
 
 /// The main entry point of the editor.
 fn main() {
+    let file_arg = env::args().nth(1);
+
     let mut context = Context {
         goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
         message: None,
-        current_buffer: Buffer::from_string(&fs::read_to_string("src/main.rs").unwrap()),
+        current_buffer: if let Some(filename) = file_arg {
+            Buffer::from_file(filename)
+        } else {
+            Buffer::from_string("\n")
+        },
         to_exit: false,
         to_refresh: false,
         to_preserve_goal_column: false,
