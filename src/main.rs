@@ -42,6 +42,11 @@ impl Buffer {
             filename: None,
         }
     }
+
+    fn to_string(&self) -> String {
+        self.lines.join("\n")
+    }
+
     #[allow(unused)]
     fn new() -> Buffer {
         Buffer::from_string("")
@@ -576,6 +581,23 @@ fn newline(context: &mut Context) {
     context.cursor.column = 0;
 }
 
+fn save_buffer(context: &mut Context) {
+    let buffer = &context.current_buffer;
+    let contents = buffer.to_string();
+    if let Some(filename) = &buffer.filename {
+        match fs::write(filename, contents) {
+            Ok(_) => {
+                context.message = Some(format!("Wrote {}", filename));
+            }
+            Err(_) => {
+                context.message = Some("Could not save file".to_string());
+            }
+        }
+    } else {
+        context.message = Some("No file".to_string());
+    }
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
@@ -602,6 +624,8 @@ fn process_user_input(context: &mut Context) -> bool {
             kill_line(context);
         } else if k == RET {
             newline(context);
+        } else if k == ctrl('s') {
+            save_buffer(context);
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
