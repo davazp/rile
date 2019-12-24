@@ -8,11 +8,10 @@ use nix::libc;
 use nix::sys::termios;
 use nix::unistd;
 
-use std::fs;
-
 use std::char;
 use std::cmp;
 use std::env;
+use std::fs;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -20,30 +19,33 @@ use std::sync::Arc;
 /// A buffer contains text that can be edited.
 struct Buffer {
     filename: Option<String>,
+    /// All lines of this buffer.
     lines: Vec<String>,
 }
 
 impl Buffer {
-    #[allow(unused)]
-    fn new() -> Buffer {
+    fn from_string(str: &str) -> Buffer {
+        let mut lines: Vec<String> = str.lines().map(String::from).collect();
+        if lines.is_empty() {
+            lines.push("".to_string());
+        }
         Buffer {
-            lines: Vec::new(),
+            lines,
             filename: None,
         }
     }
-
+    #[allow(unused)]
+    fn new() -> Buffer {
+        Buffer::from_string("")
+    }
     fn from_file(file: String) -> Buffer {
-        let content = fs::read_to_string(&file).expect("not found.");
+        let content = match fs::read_to_string(&file) {
+            Ok(content) => content,
+            Err(_) => String::from(""),
+        };
         let mut buffer = Buffer::from_string(&content);
         buffer.filename = Some(file);
         buffer
-    }
-
-    fn from_string(str: &str) -> Buffer {
-        Buffer {
-            lines: str.lines().map(String::from).collect(),
-            filename: None,
-        }
     }
 }
 
@@ -617,7 +619,7 @@ fn main() {
         current_buffer: if let Some(filename) = file_arg {
             Buffer::from_file(filename)
         } else {
-            Buffer::from_string("\n")
+            Buffer::from_string("")
         },
         to_exit: false,
         to_refresh: false,
