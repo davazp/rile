@@ -30,10 +30,13 @@ struct Buffer {
 
 impl Buffer {
     fn from_string(str: &str) -> Buffer {
-        let mut lines: Vec<String> = str.lines().map(String::from).collect();
-        if lines.is_empty() {
-            lines.push("".to_string());
-        }
+        // Note that we can't use .lines() here because it would
+        // ignore trailing new lines.
+        //
+        // .split() on the other hand will always be non-empty and it
+        // will allow us to recover the original content by adding a
+        // \n between each line.
+        let lines: Vec<String> = str.split('\n').map(String::from).collect();
         Buffer {
             lines,
             filename: None,
