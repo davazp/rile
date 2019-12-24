@@ -396,6 +396,7 @@ const ARROW_RIGHT: &'static [u8; 2] = b"[C";
 const ARROW_LEFT: &'static [u8; 2] = b"[D";
 
 const DELETE: Key = Key(127);
+const RET: Key = Key(13);
 
 /// Read and return a key.
 ///
@@ -530,6 +531,18 @@ fn kill_line(context: &mut Context) {
     }
 }
 
+fn newline(context: &mut Context) {
+    let line = &mut context.current_buffer.lines[context.cursor.line];
+    let newline = line.split_off(context.cursor.column);
+    context
+        .current_buffer
+        .lines
+        .insert(context.cursor.line + 1, newline);
+
+    context.cursor.line += 1;
+    context.cursor.column = 0;
+}
+
 /// Process user input.
 fn process_user_input(context: &mut Context) -> bool {
     if let Some(k) = read_key() {
@@ -554,6 +567,8 @@ fn process_user_input(context: &mut Context) -> bool {
             delete_backward_char(context);
         } else if k == ctrl('k') {
             kill_line(context);
+        } else if k == RET {
+            newline(context);
         } else {
             if let Some(ch) = k.as_char() {
                 insert_char(context, ch)
