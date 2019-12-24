@@ -605,7 +605,7 @@ fn save_buffer(context: &mut Context) {
 }
 
 /// Process user input.
-fn process_user_input(context: &mut Context) {
+fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
     let k = read_key();
     context.to_refresh = true;
     if k == ctrl('a') {
@@ -631,6 +631,8 @@ fn process_user_input(context: &mut Context) {
     } else if k == TAB {
         indent_line(context);
     } else if k == ctrl('x') {
+        context.message = Some("C-x ".to_string());
+        refresh_screen(term, win, context);
         let k = read_key();
         if k == ctrl('c') {
             context.to_exit = true;
@@ -707,7 +709,7 @@ fn main() {
         context.to_preserve_goal_column = false;
         context.to_refresh = false;
 
-        process_user_input(&mut context);
+        process_user_input(&mut term, &mut window, &mut context);
 
         if context.to_refresh {
             adjust_scroll(&mut term, &mut window, &mut context);
