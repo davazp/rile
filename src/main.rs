@@ -141,8 +141,8 @@ fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
 
     // Be okay with read() returning 0 bytes read, and add a time out
     // of 1 1/10 of a second (100 ms)
-    termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
-    termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
+    // termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
+    // termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
 
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
 
@@ -439,28 +439,22 @@ const RET: Key = Key(13);
 const TAB: Key = Key(9);
 
 /// Read and return a key.
-///
-/// If no key is entered by the user, the function will timeout and it
-/// will return None instead.
-///
-fn read_key() -> Option<Key> {
+fn read_key() -> Key {
     let mut buf = [0u8];
     unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
     let cmd = buf[0] as u32;
-    if cmd == 0 {
-        None
-    } else if cmd == 0x1b {
+    if cmd == 0x1b {
         let mut seq: [u8; 2] = [0; 2];
         unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
         match &seq {
-            ARROW_UP => Some(ctrl('p')),
-            ARROW_DOWN => Some(ctrl('n')),
-            ARROW_RIGHT => Some(ctrl('f')),
-            ARROW_LEFT => Some(ctrl('b')),
-            _ => Some(Key(cmd)),
+            ARROW_UP => ctrl('p'),
+            ARROW_DOWN => ctrl('n'),
+            ARROW_RIGHT => ctrl('f'),
+            ARROW_LEFT => ctrl('b'),
+            _ => Key(cmd),
         }
     } else {
-        Some(Key(cmd))
+        Key(cmd)
     }
 }
 
@@ -611,45 +605,44 @@ fn save_buffer(context: &mut Context) {
 }
 
 /// Process user input.
-fn process_user_input(context: &mut Context) -> bool {
-    if let Some(k) = read_key() {
-        context.to_refresh = true;
-        if k == ctrl('q') {
+fn process_user_input(context: &mut Context) {
+    let k = read_key();
+    context.to_refresh = true;
+    if k == ctrl('a') {
+        move_beginning_of_line(context);
+    } else if k == ctrl('e') {
+        move_end_of_line(context);
+    } else if k == ctrl('f') {
+        forward_char(context);
+    } else if k == ctrl('b') {
+        backward_char(context);
+    } else if k == ctrl('p') {
+        previous_line(context);
+    } else if k == ctrl('n') {
+        next_line(context);
+    } else if k == ctrl('d') {
+        delete_char(context);
+    } else if k == DELETE {
+        delete_backward_char(context);
+    } else if k == ctrl('k') {
+        kill_line(context);
+    } else if k == RET {
+        newline(context);
+    } else if k == TAB {
+        indent_line(context);
+    } else if k == ctrl('x') {
+        let k = read_key();
+        if k == ctrl('c') {
             context.to_exit = true;
-        } else if k == ctrl('a') {
-            move_beginning_of_line(context);
-        } else if k == ctrl('e') {
-            move_end_of_line(context);
-        } else if k == ctrl('f') {
-            forward_char(context);
-        } else if k == ctrl('b') {
-            backward_char(context);
-        } else if k == ctrl('p') {
-            previous_line(context);
-        } else if k == ctrl('n') {
-            next_line(context);
-        } else if k == ctrl('d') {
-            delete_char(context);
-        } else if k == DELETE {
-            delete_backward_char(context);
-        } else if k == ctrl('k') {
-            kill_line(context);
-        } else if k == RET {
-            newline(context);
         } else if k == ctrl('s') {
             save_buffer(context);
-        } else if k == TAB {
-            indent_line(context);
-        } else {
-            if let Some(ch) = k.as_char() {
-                insert_char(context, ch)
-            } else {
-                context.message = Some(format!("{:?}", k));
-            }
         }
-        true
     } else {
-        false
+        if let Some(ch) = k.as_char() {
+            insert_char(context, ch)
+        } else {
+            context.message = Some(format!("{:?}", k));
+        }
     }
 }
 
@@ -714,9 +707,7 @@ fn main() {
         context.to_preserve_goal_column = false;
         context.to_refresh = false;
 
-        if !process_user_input(&mut context) {
-            continue;
-        }
+        process_user_input(&mut context);
 
         if context.to_refresh {
             adjust_scroll(&mut term, &mut window, &mut context);
