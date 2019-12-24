@@ -701,17 +701,19 @@ fn main() {
             continue;
         }
 
-        if context.to_exit {
-            break;
-        }
-
         if context.to_refresh {
             adjust_scroll(&mut term, &mut window, &mut context);
             refresh_screen(&mut term, &mut window, &context);
         }
 
+        context.message = None;
+
         if !context.to_preserve_goal_column {
             context.goal_column = None;
+        }
+
+        if context.to_exit {
+            break;
         }
     })
     .expect("Could not initialize the terminal to run in raw mode.");
