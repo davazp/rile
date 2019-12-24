@@ -32,28 +32,18 @@ struct Buffer {
 }
 
 impl Buffer {
-    fn from_string(str: &str) -> Buffer {
-        // Note that we can't use .lines() here because it would
-        // ignore trailing new lines.
-        //
-        // .split() on the other hand will always be non-empty and it
-        // will allow us to recover the original content by adding a
-        // \n between each line.
-        let lines: Vec<String> = str.split('\n').map(String::from).collect();
+    fn new() -> Buffer {
         Buffer {
-            lines,
+            lines: Vec::new(),
             filename: None,
         }
     }
-
-    fn to_string(&self) -> String {
-        self.lines.join("\n")
+    fn from_string(str: &str) -> Buffer {
+        let mut buffer = Buffer::new();
+        buffer.set(str);
+        buffer
     }
 
-    #[allow(unused)]
-    fn new() -> Buffer {
-        Buffer::from_string("")
-    }
     fn from_file(file: &str) -> Buffer {
         let content = match fs::read_to_string(&file) {
             Ok(content) => content,
@@ -62,6 +52,24 @@ impl Buffer {
         let mut buffer = Buffer::from_string(&content);
         buffer.filename = Some(file.to_string());
         buffer
+    }
+
+    fn set(&mut self, str: &str) {
+        // Note that we can't use .lines() here because it would
+        // ignore trailing new lines.
+        //
+        // .split() on the other hand will always be non-empty and it
+        // will allow us to recover the original content by adding a
+        // \n between each line.
+        self.lines = str.split('\n').map(String::from).collect();
+    }
+
+    fn truncate(&mut self) {
+        self.lines.clear();
+    }
+
+    fn to_string(&self) -> String {
+        self.lines.join("\n")
     }
 }
 
@@ -593,14 +601,14 @@ fn save_buffer(context: &mut Context) {
     if let Some(filename) = &buffer.filename {
         match fs::write(filename, contents) {
             Ok(_) => {
-                context.minibuffer = Buffer::from_string(&format!("Wrote {}", filename));
+                context.minibuffer.set(&format!("Wrote {}", filename));
             }
             Err(_) => {
-                context.minibuffer = Buffer::from_string("Could not save file");
+                context.minibuffer.set("Could not save file");
             }
         }
     } else {
-        context.minibuffer = Buffer::from_string("No file");
+        context.minibuffer.set("No file");
     }
 }
 
@@ -631,7 +639,7 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
     } else if k == TAB {
         indent_line(context);
     } else if k == ctrl('x') {
-        context.minibuffer = Buffer::from_string("C-x ");
+        context.minibuffer.set("C-x ");
         refresh_screen(term, win, context);
         let k = read_key();
         if k == ctrl('c') {
@@ -643,7 +651,7 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         if let Some(ch) = k.as_char() {
             insert_char(context, ch)
         } else {
-            context.minibuffer = Buffer::from_string(&format!("{:?}", k));
+            context.minibuffer.set(&format!("{:?}", k));
         }
     }
 }
@@ -716,7 +724,7 @@ fn main() {
             refresh_screen(&mut term, &mut window, &context);
         }
 
-        context.minibuffer = Buffer::new();
+        context.minibuffer.truncate();
 
         if !context.to_preserve_goal_column {
             context.goal_column = None;
