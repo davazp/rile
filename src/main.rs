@@ -612,6 +612,17 @@ fn save_buffer(context: &mut Context) {
     }
 }
 
+fn next_screen(context: &mut Context, window: &mut Window, term: &Term) {
+    let context_lines = 2;
+    let offset = window.get_window_lines(term) - 1 - context_lines;
+    if window.scroll_line + offset < context.current_buffer.lines.len() {
+        window.scroll_line += offset;
+        context.cursor.line += offset;
+    } else {
+        context.minibuffer.set("End of buffer");
+    }
+}
+
 /// Process user input.
 fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
     let k = read_key();
@@ -647,6 +658,8 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         } else if k == ctrl('s') {
             save_buffer(context);
         }
+    } else if k == ctrl('v') {
+        next_screen(context, win, term);
     } else {
         if let Some(ch) = k.as_char() {
             insert_char(context, ch)
