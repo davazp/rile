@@ -284,9 +284,13 @@ fn support_true_color() -> bool {
 //
 
 /// Adjust the scroll level so the cursor is on the screen.
+///
+/// If the cursor is after the screen, the screen will be scrolled so the
+///
+/// If the cursor is before the screen,
 fn adjust_scroll(term: &Term, window: &mut Window, context: &mut Context) {
     if context.cursor.line < window.scroll_line {
-        window.scroll_line -= 1;
+        window.scroll_line = context.cursor.line;
     }
     if context.cursor.line > window.scroll_line + term.rows - 2 - 1 {
         window.scroll_line += 1;
@@ -612,15 +616,31 @@ fn save_buffer(context: &mut Context) {
     }
 }
 
+const CONTEXT_LINES: usize = 2;
+
 fn next_screen(context: &mut Context, window: &mut Window, term: &Term) {
-    let context_lines = 2;
-    let offset = window.get_window_lines(term) - 1 - context_lines;
-    if window.scroll_line + offset < context.current_buffer.lines.len() {
-        window.scroll_line += offset;
-        context.cursor.line += offset;
+    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
+    let target = window.scroll_line + offset;
+    if target < context.current_buffer.lines.len() {
+        window.scroll_line = target;
+        context.cursor.line = target;
     } else {
         context.minibuffer.set("End of buffer");
     }
+}
+
+fn previous_screen(context: &mut Context, window: &mut Window, term: &Term) {
+    if window.scroll_line == 0 {
+        context.minibuffer.set("Beginning of buffer");
+        return;
+    }
+    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
+    context.cursor.line = window.scroll_line + CONTEXT_LINES;
+    window.scroll_line = if let Some(scroll_line) = window.scroll_line.checked_sub(offset) {
+        scroll_line
+    } else {
+        0
+    };
 }
 
 /// Process user input.
@@ -660,6 +680,8 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         }
     } else if k == ctrl('v') {
         next_screen(context, win, term);
+    } else if k == ctrl('c') {
+        previous_screen(context, win, term);
     } else {
         if let Some(ch) = k.as_char() {
             insert_char(context, ch)
