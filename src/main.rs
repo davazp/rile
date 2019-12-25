@@ -170,8 +170,6 @@ struct Term {
     // The size of the terminal
     rows: usize,
     columns: usize,
-
-    truecolor: bool,
 }
 
 /// Specify which part of the terminal to erase.
@@ -192,7 +190,6 @@ impl Term {
             buffer: String::new(),
             rows,
             columns,
-            truecolor: support_true_color(),
         }
     }
 
@@ -275,6 +272,7 @@ fn get_window_size() -> (usize, usize) {
     }
 }
 
+#[allow(unused)]
 fn support_true_color() -> bool {
     env::var("COLORTERM") == Ok(String::from("truecolor"))
 }
@@ -356,12 +354,8 @@ impl Window {
     }
 
     fn render_modeline(&self, term: &mut Term, context: &Context) {
-        if false && term.truecolor {
-            term.csi(&format!("38;5;0m"));
-            term.csi(&format!("48;2;{};{};{}m", 235, 171, 52));
-        } else {
-            term.csi("7m");
-        }
+        term.csi("38;5;15m");
+        term.csi("48;5;236m");
         // On MacOsX's terminal, when you erase a line it won't fill the
         // full line with the current attributes, unlike ITerm. So we use
         // `write_line` to pad the string with spaces.
@@ -524,6 +518,7 @@ fn next_line(context: &mut Context) -> bool {
         context.cursor.column = cmp::min(context.current_line().len(), goal_column);
         true
     } else {
+        context.minibuffer.set("End of buffer");
         false
     }
 }
@@ -535,6 +530,7 @@ fn previous_line(context: &mut Context) -> bool {
         context.cursor.column = cmp::min(context.current_line().len(), goal_column);
         true
     } else {
+        context.minibuffer.set("Beginning of buffer");
         false
     }
 }
@@ -725,7 +721,7 @@ fn main() {
     };
 
     let mut window = Window {
-        show_lines: true,
+        show_lines: false,
         scroll_line: 0,
     };
 
