@@ -23,7 +23,7 @@ fn read_key() -> Key {
         unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
 
         if seq[1] == 0 {
-            Key::from_code(seq[0] as u32).alt()
+            Key::from_code(seq[0] as u32).meta()
         } else {
             match &seq {
                 ARROW_UP => Key::parse_unchecked("C-p"),
