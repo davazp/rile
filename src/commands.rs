@@ -149,7 +149,7 @@ pub fn newline(context: &mut Context) {
     let newline = line.split_off(context.cursor.column);
     context
         .current_buffer
-        .insert_at(context.cursor.line + 1, newline);
+        .insert_line_at(context.cursor.line + 1, newline);
 
     context.cursor.line += 1;
     context.cursor.column = 0;

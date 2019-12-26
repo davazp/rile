@@ -46,7 +46,7 @@ impl Buffer {
         self.lines.len()
     }
 
-    pub fn insert_at(&mut self, nth: usize, line: String) {
+    pub fn insert_line_at(&mut self, nth: usize, line: String) {
         self.lines.insert(nth, line);
     }
 
