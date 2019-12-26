@@ -1,7 +1,7 @@
 use std::cmp;
 
-use super::context::Context;
-use super::term::{ErasePart, Term};
+use crate::context::Context;
+use crate::term::{ErasePart, Term};
 
 /// Adjust the scroll level so the cursor is on the screen.
 ///

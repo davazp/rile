@@ -1,4 +1,4 @@
-use super::buffer::Buffer;
+use crate::buffer::Buffer;
 
 /// A cursor into a buffer content
 pub struct Cursor {

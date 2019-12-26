@@ -2,11 +2,11 @@ use nix;
 use nix::libc;
 use nix::unistd;
 
-use super::commands;
-use super::context::Context;
-use super::key::Key;
-use super::term::Term;
-use super::window::{refresh_screen, Window};
+use crate::commands;
+use crate::context::Context;
+use crate::key::Key;
+use crate::term::Term;
+use crate::window::{refresh_screen, Window};
 
 const ARROW_UP: &'static [u8; 2] = b"[A";
 const ARROW_DOWN: &'static [u8; 2] = b"[B";

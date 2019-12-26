@@ -1,9 +1,9 @@
 use std::cmp;
 use std::fs;
 
-use super::context::Context;
-use super::term::Term;
-use super::window::Window;
+use crate::context::Context;
+use crate::term::Term;
+use crate::window::Window;
 
 fn get_line_indentation(line: &str) -> usize {
     line.chars().position(|ch| !ch.is_whitespace()).unwrap_or(0)
