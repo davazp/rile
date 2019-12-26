@@ -408,7 +408,10 @@ fn write_line(term: &mut Term, str: &str, width: usize) {
 }
 
 #[derive(PartialEq, Debug)]
-struct Key(u32);
+enum Key {
+    Code(u32),
+    Alt(u32),
+}
 
 /// Return a key made of a character with ctrl pressed.
 ///
@@ -419,19 +422,25 @@ struct Key(u32);
 /// ```
 ///
 fn ctrl(ch: char) -> Key {
-    Key(0x1f & (ch as u32))
+    Key::Code(0x1f & (ch as u32))
+}
+fn alt(ch: char) -> Key {
+    Key::Alt(ch as u32)
 }
 
 #[allow(unused)]
 /// Return a key from a character.
 fn key(ch: char) -> Key {
-    Key(ch as u32)
+    Key::Code(ch as u32)
 }
 
 impl Key {
     /// Return a character if the key represents a non-control character.
     fn as_char(&self) -> Option<char> {
-        char::from_u32(self.0).filter(|ch| !ch.is_control())
+        match self {
+            Key::Code(code) => char::from_u32(*code).filter(|ch| !ch.is_control()),
+            _ => None,
+        }
     }
 }
 
@@ -440,9 +449,9 @@ const ARROW_DOWN: &'static [u8; 2] = b"[B";
 const ARROW_RIGHT: &'static [u8; 2] = b"[C";
 const ARROW_LEFT: &'static [u8; 2] = b"[D";
 
-const DELETE: Key = Key(127);
-const RET: Key = Key(13);
-const TAB: Key = Key(9);
+const DELETE: Key = Key::Code(127);
+const RET: Key = Key::Code(13);
+const TAB: Key = Key::Code(9);
 
 /// Read and return a key.
 fn read_key() -> Key {
@@ -452,15 +461,20 @@ fn read_key() -> Key {
     if cmd == 0x1b {
         let mut seq: [u8; 2] = [0; 2];
         unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
-        match &seq {
-            ARROW_UP => ctrl('p'),
-            ARROW_DOWN => ctrl('n'),
-            ARROW_RIGHT => ctrl('f'),
-            ARROW_LEFT => ctrl('b'),
-            _ => Key(cmd),
+
+        if seq[1] == 0 {
+            Key::Alt(seq[0] as u32)
+        } else {
+            match &seq {
+                ARROW_UP => ctrl('p'),
+                ARROW_DOWN => ctrl('n'),
+                ARROW_RIGHT => ctrl('f'),
+                ARROW_LEFT => ctrl('b'),
+                _ => Key::Code(cmd),
+            }
         }
     } else {
-        Key(cmd)
+        Key::Code(cmd)
     }
 }
 
@@ -676,7 +690,7 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         }
     } else if k == ctrl('v') {
         next_screen(context, win, term);
-    } else if k == ctrl('c') {
+    } else if k == alt('v') {
         previous_screen(context, win, term);
     } else {
         if let Some(ch) = k.as_char() {
