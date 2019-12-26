@@ -3,8 +3,10 @@
 
 extern crate signal_hook;
 
+mod buffer;
 mod key;
 
+use buffer::Buffer;
 use key::Key;
 
 use nix;
@@ -27,55 +29,6 @@ const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const PKG_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const PKG_DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const PKG_GIT_COMMIT: Option<&'static str> = option_env!("GIT_COMMIT");
-
-/// A buffer contains text that can be edited.
-struct Buffer {
-    filename: Option<String>,
-    /// All lines of this buffer.
-    lines: Vec<String>,
-}
-
-impl Buffer {
-    fn new() -> Buffer {
-        Buffer {
-            lines: Vec::new(),
-            filename: None,
-        }
-    }
-    fn from_string(str: &str) -> Buffer {
-        let mut buffer = Buffer::new();
-        buffer.set(str);
-        buffer
-    }
-
-    fn from_file(file: &str) -> Buffer {
-        let content = match fs::read_to_string(&file) {
-            Ok(content) => content,
-            Err(_) => String::from(""),
-        };
-        let mut buffer = Buffer::from_string(&content);
-        buffer.filename = Some(file.to_string());
-        buffer
-    }
-
-    fn set(&mut self, str: &str) {
-        // Note that we can't use .lines() here because it would
-        // ignore trailing new lines.
-        //
-        // .split() on the other hand will always be non-empty and it
-        // will allow us to recover the original content by adding a
-        // \n between each line.
-        self.lines = str.split('\n').map(String::from).collect();
-    }
-
-    fn truncate(&mut self) {
-        self.lines.clear();
-    }
-
-    fn to_string(&self) -> String {
-        self.lines.join("\n")
-    }
-}
 
 /// A cursor into a buffer content
 struct Cursor {
@@ -105,15 +58,6 @@ struct Context {
 
     /// If set by a command, [`goal_column`](#structfield.goal_column) won't be reset after it.
     to_preserve_goal_column: bool,
-}
-
-impl Context {
-    fn current_line(&self) -> &str {
-        &self.current_buffer.lines[self.cursor.line]
-    }
-    fn current_line_as_mut(&mut self) -> &mut String {
-        &mut self.current_buffer.lines[self.cursor.line]
-    }
 }
 
 // Terminal
@@ -341,7 +285,7 @@ impl Window {
         for row in 0..window_lines {
             let linenum = row + self.scroll_line;
 
-            if let Some(line) = buffer.lines.get(linenum) {
+            if let Some(line) = buffer.get_line(linenum) {
                 if self.show_lines {
                     term.csi("38;5;240m");
                     term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
@@ -372,7 +316,7 @@ impl Window {
                     .filename
                     .as_ref()
                     .unwrap_or(&"*scratch*".to_string()),
-                100 * (context.cursor.line + 1) / context.current_buffer.lines.len(),
+                100 * (context.cursor.line + 1) / context.current_buffer.lines_count(),
                 context.cursor.line + 1
             ),
             term.columns,
@@ -446,7 +390,9 @@ fn get_line_indentation(line: &str) -> usize {
 }
 
 fn move_beginning_of_line(context: &mut Context) {
-    let line = context.current_line();
+    let line = context
+        .current_buffer
+        .get_line_unchecked(context.cursor.line);
     let indentation = get_line_indentation(line);
     context.cursor.column = if context.cursor.column <= indentation {
         0
@@ -456,12 +402,18 @@ fn move_beginning_of_line(context: &mut Context) {
 }
 
 fn move_end_of_line(context: &mut Context) {
-    let eol = context.current_line().len();
+    let eol = context
+        .current_buffer
+        .get_line_unchecked(context.cursor.line)
+        .len();
     context.cursor.column = eol;
 }
 
 fn forward_char(context: &mut Context) {
-    let len = context.current_line().len();
+    let len = context
+        .current_buffer
+        .get_line_unchecked(context.cursor.line)
+        .len();
     if context.cursor.column < len {
         context.cursor.column += 1;
     } else {
@@ -489,10 +441,16 @@ fn get_or_set_gaol_column(context: &mut Context) -> usize {
 }
 
 fn next_line(context: &mut Context) -> bool {
-    if context.cursor.line < context.current_buffer.lines.len() - 1 {
+    if context.cursor.line < context.current_buffer.lines_count() - 1 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line += 1;
-        context.cursor.column = cmp::min(context.current_line().len(), goal_column);
+        context.cursor.column = cmp::min(
+            context
+                .current_buffer
+                .get_line_unchecked(context.cursor.line)
+                .len(),
+            goal_column,
+        );
         true
     } else {
         context.minibuffer.set("End of buffer");
@@ -504,7 +462,13 @@ fn previous_line(context: &mut Context) -> bool {
     if context.cursor.line > 0 {
         let goal_column = get_or_set_gaol_column(context);
         context.cursor.line -= 1;
-        context.cursor.column = cmp::min(context.current_line().len(), goal_column);
+        context.cursor.column = cmp::min(
+            context
+                .current_buffer
+                .get_line_unchecked(context.cursor.line)
+                .len(),
+            goal_column,
+        );
         true
     } else {
         context.minibuffer.set("Beginning of buffer");
@@ -514,7 +478,9 @@ fn previous_line(context: &mut Context) -> bool {
 
 fn insert_char(context: &mut Context, ch: char) {
     let idx = context.cursor.column;
-    let line = context.current_line_as_mut();
+    let line = context
+        .current_buffer
+        .get_line_mut_unchecked(context.cursor.line);
     line.insert(idx, ch);
     context.cursor.column += 1;
 }
@@ -527,12 +493,14 @@ fn delete_char(context: &mut Context) {
 fn delete_backward_char(context: &mut Context) {
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
-        context.current_buffer.lines[context.cursor.line].remove(context.cursor.column);
+        context
+            .current_buffer
+            .remove_char_at(context.cursor.line, context.cursor.column);
     } else if context.cursor.line > 0 {
-        let lines = &mut context.current_buffer.lines;
-        let line = lines.remove(context.cursor.line);
-
-        let previous_line = &mut lines[context.cursor.line - 1];
+        let line = context.current_buffer.remove_line(context.cursor.line);
+        let previous_line = context
+            .current_buffer
+            .get_line_mut_unchecked(context.cursor.line - 1);
         let previous_line_original_length = previous_line.len();
         previous_line.push_str(&line);
 
@@ -542,9 +510,11 @@ fn delete_backward_char(context: &mut Context) {
 }
 
 fn kill_line(context: &mut Context) {
-    let line = &mut context.current_buffer.lines[context.cursor.line];
+    let line = context
+        .current_buffer
+        .get_line_mut_unchecked(context.cursor.line);
     if context.cursor.column == line.len() {
-        if context.cursor.line < context.current_buffer.lines.len() - 1 {
+        if context.cursor.line < context.current_buffer.lines_count() - 1 {
             delete_char(context);
         }
     } else {
@@ -553,19 +523,22 @@ fn kill_line(context: &mut Context) {
 }
 
 fn newline(context: &mut Context) {
-    let line = &mut context.current_buffer.lines[context.cursor.line];
+    let line = context
+        .current_buffer
+        .get_line_mut_unchecked(context.cursor.line);
     let newline = line.split_off(context.cursor.column);
     context
         .current_buffer
-        .lines
-        .insert(context.cursor.line + 1, newline);
+        .insert_at(context.cursor.line + 1, newline);
 
     context.cursor.line += 1;
     context.cursor.column = 0;
 }
 
 fn indent_line(context: &mut Context) {
-    let line = &context.current_buffer.lines[context.cursor.line];
+    let line = &context
+        .current_buffer
+        .get_line_unchecked(context.cursor.line);
     let indent = get_line_indentation(line);
     if context.cursor.column < indent {
         context.cursor.column = indent;
@@ -594,7 +567,7 @@ const CONTEXT_LINES: usize = 2;
 fn next_screen(context: &mut Context, window: &mut Window, term: &Term) {
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
     let target = window.scroll_line + offset;
-    if target < context.current_buffer.lines.len() {
+    if target < context.current_buffer.lines_count() {
         window.scroll_line = target;
         context.cursor.line = target;
     } else {
