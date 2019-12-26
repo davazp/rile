@@ -4,23 +4,23 @@
 extern crate signal_hook;
 
 mod buffer;
+mod commands;
 mod context;
 mod key;
 mod term;
+mod window;
 
 use buffer::Buffer;
 use context::{Context, Cursor};
 use key::Key;
-use term::{get_window_size, with_raw_mode, ErasePart, Term};
+use term::{get_window_size, with_raw_mode, Term};
+use window::{adjust_scroll, refresh_screen, Window};
 
 use nix;
 use nix::libc;
 use nix::unistd;
 
-use std::char;
-use std::cmp;
 use std::env;
-use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -31,136 +31,6 @@ const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const PKG_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const PKG_DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const PKG_GIT_COMMIT: Option<&'static str> = option_env!("GIT_COMMIT");
-
-// Rendering
-//
-//
-
-/// Adjust the scroll level so the cursor is on the screen.
-///
-/// If the cursor is after the screen, the screen will be scrolled so the
-///
-/// If the cursor is before the screen,
-fn adjust_scroll(term: &Term, window: &mut Window, context: &mut Context) {
-    if context.cursor.line < window.scroll_line {
-        window.scroll_line = context.cursor.line;
-    }
-    if context.cursor.line > window.scroll_line + term.rows - 2 - 1 {
-        window.scroll_line += 1;
-    }
-}
-
-struct Window {
-    scroll_line: usize,
-    show_lines: bool,
-}
-impl Window {
-    fn get_window_lines(&self, term: &Term) -> usize {
-        term.rows - 2
-    }
-
-    fn get_pad_width(&self, term: &Term) -> usize {
-        if self.show_lines {
-            let last_linenum_width =
-                format!("{}", self.scroll_line + self.get_window_lines(term)).len();
-            last_linenum_width + 1
-        } else {
-            0
-        }
-    }
-
-    fn render_cursor(&self, term: &mut Term, context: &Context) {
-        term.set_cursor(
-            context.cursor.line - self.scroll_line + 1,
-            context.cursor.column + self.get_pad_width(term) + 1,
-        );
-    }
-
-    fn render_window(&self, term: &mut Term, context: &Context) {
-        let offset = self.get_pad_width(term);
-        let window_columns = term.columns - offset;
-
-        term.set_cursor(1, 1);
-
-        let window_lines = term.rows - 2;
-
-        let offset = self.get_pad_width(term);
-
-        let buffer = &context.current_buffer;
-
-        // Main window
-        for row in 0..window_lines {
-            let linenum = row + self.scroll_line;
-
-            if let Some(line) = buffer.get_line(linenum) {
-                if self.show_lines {
-                    term.csi("38;5;240m");
-                    term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
-                }
-
-                term.csi("m");
-                term.write(&line[..cmp::min(line.len(), window_columns)]);
-            }
-
-            term.erase_line(ErasePart::ToEnd);
-            term.write("\r\n");
-        }
-        term.csi("m");
-    }
-
-    fn render_modeline(&self, term: &mut Term, context: &Context) {
-        term.csi("38;5;15m");
-        term.csi("48;5;236m");
-        // On MacOsX's terminal, when you erase a line it won't fill the
-        // full line with the current attributes, unlike ITerm. So we use
-        // `write_line` to pad the string with spaces.
-        write_line(
-            term,
-            &format!(
-                "  {}  {}% L{}",
-                context
-                    .current_buffer
-                    .filename
-                    .as_ref()
-                    .unwrap_or(&"*scratch*".to_string()),
-                100 * (context.cursor.line + 1) / context.current_buffer.lines_count(),
-                context.cursor.line + 1
-            ),
-            term.columns,
-        );
-    }
-}
-
-fn render_minibuffer(term: &mut Term, context: &Context) {
-    term.csi("m");
-    write_line(
-        term,
-        &format!("{}", context.minibuffer.to_string()),
-        term.columns,
-    );
-}
-
-/// Refresh the screen.
-///
-/// Ensure the terminal reflects the latest state of the editor.
-fn refresh_screen(term: &mut Term, win: &Window, context: &Context) {
-    term.hide_cursor();
-
-    win.render_window(term, context);
-    win.render_modeline(term, context);
-    render_minibuffer(term, context);
-
-    win.render_cursor(term, context);
-
-    term.show_cursor();
-    term.flush()
-}
-
-fn write_line(term: &mut Term, str: &str, width: usize) {
-    assert!(str.len() <= width);
-    let padded = format!("{:width$}", str, width = width);
-    term.write(&padded);
-}
 
 const ARROW_UP: &'static [u8; 2] = b"[A";
 const ARROW_DOWN: &'static [u8; 2] = b"[B";
@@ -192,236 +62,32 @@ fn read_key() -> Key {
     }
 }
 
-fn get_line_indentation(line: &str) -> usize {
-    line.chars().position(|ch| !ch.is_whitespace()).unwrap_or(0)
-}
-
-fn move_beginning_of_line(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line);
-    let indentation = get_line_indentation(line);
-    context.cursor.column = if context.cursor.column <= indentation {
-        0
-    } else {
-        indentation
-    };
-}
-
-fn move_end_of_line(context: &mut Context) {
-    let eol = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line)
-        .len();
-    context.cursor.column = eol;
-}
-
-fn forward_char(context: &mut Context) {
-    let len = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line)
-        .len();
-    if context.cursor.column < len {
-        context.cursor.column += 1;
-    } else {
-        if next_line(context) {
-            context.cursor.column = 0;
-        };
-    }
-}
-
-fn backward_char(context: &mut Context) {
-    if context.cursor.column > 0 {
-        context.cursor.column -= 1;
-    } else {
-        if previous_line(context) {
-            move_end_of_line(context);
-        };
-    }
-}
-
-fn get_or_set_gaol_column(context: &mut Context) -> usize {
-    // We set `to_preserve_goal_column` to ensure the goal_column is
-    // not lost for the next command.
-    context.to_preserve_goal_column = true;
-    *context.goal_column.get_or_insert(context.cursor.column)
-}
-
-fn next_line(context: &mut Context) -> bool {
-    if context.cursor.line < context.current_buffer.lines_count() - 1 {
-        let goal_column = get_or_set_gaol_column(context);
-        context.cursor.line += 1;
-        context.cursor.column = cmp::min(
-            context
-                .current_buffer
-                .get_line_unchecked(context.cursor.line)
-                .len(),
-            goal_column,
-        );
-        true
-    } else {
-        context.minibuffer.set("End of buffer");
-        false
-    }
-}
-
-fn previous_line(context: &mut Context) -> bool {
-    if context.cursor.line > 0 {
-        let goal_column = get_or_set_gaol_column(context);
-        context.cursor.line -= 1;
-        context.cursor.column = cmp::min(
-            context
-                .current_buffer
-                .get_line_unchecked(context.cursor.line)
-                .len(),
-            goal_column,
-        );
-        true
-    } else {
-        context.minibuffer.set("Beginning of buffer");
-        false
-    }
-}
-
-fn insert_char(context: &mut Context, ch: char) {
-    let idx = context.cursor.column;
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
-    line.insert(idx, ch);
-    context.cursor.column += 1;
-}
-
-fn delete_char(context: &mut Context) {
-    forward_char(context);
-    delete_backward_char(context);
-}
-
-fn delete_backward_char(context: &mut Context) {
-    if context.cursor.column > 0 {
-        context.cursor.column -= 1;
-        context
-            .current_buffer
-            .remove_char_at(context.cursor.line, context.cursor.column);
-    } else if context.cursor.line > 0 {
-        let line = context.current_buffer.remove_line(context.cursor.line);
-        let previous_line = context
-            .current_buffer
-            .get_line_mut_unchecked(context.cursor.line - 1);
-        let previous_line_original_length = previous_line.len();
-        previous_line.push_str(&line);
-
-        context.cursor.line -= 1;
-        context.cursor.column = previous_line_original_length;
-    }
-}
-
-fn kill_line(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
-    if context.cursor.column == line.len() {
-        if context.cursor.line < context.current_buffer.lines_count() - 1 {
-            delete_char(context);
-        }
-    } else {
-        line.drain(context.cursor.column..);
-    }
-}
-
-fn newline(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
-    let newline = line.split_off(context.cursor.column);
-    context
-        .current_buffer
-        .insert_at(context.cursor.line + 1, newline);
-
-    context.cursor.line += 1;
-    context.cursor.column = 0;
-}
-
-fn indent_line(context: &mut Context) {
-    let line = &context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line);
-    let indent = get_line_indentation(line);
-    if context.cursor.column < indent {
-        context.cursor.column = indent;
-    }
-}
-
-fn save_buffer(context: &mut Context) {
-    let buffer = &context.current_buffer;
-    let contents = buffer.to_string();
-    if let Some(filename) = &buffer.filename {
-        match fs::write(filename, contents) {
-            Ok(_) => {
-                context.minibuffer.set(&format!("Wrote {}", filename));
-            }
-            Err(_) => {
-                context.minibuffer.set("Could not save file");
-            }
-        }
-    } else {
-        context.minibuffer.set("No file");
-    }
-}
-
-const CONTEXT_LINES: usize = 2;
-
-fn next_screen(context: &mut Context, window: &mut Window, term: &Term) {
-    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
-    let target = window.scroll_line + offset;
-    if target < context.current_buffer.lines_count() {
-        window.scroll_line = target;
-        context.cursor.line = target;
-    } else {
-        context.minibuffer.set("End of buffer");
-    }
-}
-
-fn previous_screen(context: &mut Context, window: &mut Window, term: &Term) {
-    if window.scroll_line == 0 {
-        context.minibuffer.set("Beginning of buffer");
-        return;
-    }
-    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
-    context.cursor.line = window.scroll_line + CONTEXT_LINES;
-    window.scroll_line = if let Some(scroll_line) = window.scroll_line.checked_sub(offset) {
-        scroll_line
-    } else {
-        0
-    };
-}
-
 /// Process user input.
 fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
     let k = read_key();
     context.to_refresh = true;
     if k == Key::parse_unchecked("C-a") {
-        move_beginning_of_line(context);
+        commands::move_beginning_of_line(context);
     } else if k == Key::parse_unchecked("C-e") {
-        move_end_of_line(context);
+        commands::move_end_of_line(context);
     } else if k == Key::parse_unchecked("C-f") {
-        forward_char(context);
+        commands::forward_char(context);
     } else if k == Key::parse_unchecked("C-b") {
-        backward_char(context);
+        commands::backward_char(context);
     } else if k == Key::parse_unchecked("C-p") {
-        previous_line(context);
+        commands::previous_line(context);
     } else if k == Key::parse_unchecked("C-n") {
-        next_line(context);
+        commands::next_line(context);
     } else if k == Key::parse_unchecked("C-d") {
-        delete_char(context);
+        commands::delete_char(context);
     } else if k == Key::parse_unchecked("DEL") {
-        delete_backward_char(context);
+        commands::delete_backward_char(context);
     } else if k == Key::parse_unchecked("C-k") {
-        kill_line(context);
+        commands::kill_line(context);
     } else if k == Key::parse_unchecked("RET") || k == Key::parse_unchecked("C-j") {
-        newline(context);
+        commands::newline(context);
     } else if k == Key::parse_unchecked("TAB") {
-        indent_line(context);
+        commands::indent_line(context);
     } else if k == Key::parse_unchecked("C-x") {
         context.minibuffer.set("C-x ");
         refresh_screen(term, win, context);
@@ -429,15 +95,15 @@ fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) 
         if k == Key::parse_unchecked("C-c") {
             context.to_exit = true;
         } else if k == Key::parse_unchecked("C-s") {
-            save_buffer(context);
+            commands::save_buffer(context);
         }
     } else if k == Key::parse_unchecked("C-v") {
-        next_screen(context, win, term);
+        commands::next_screen(context, win, term);
     } else if k == Key::parse_unchecked("M-v") {
-        previous_screen(context, win, term);
+        commands::previous_screen(context, win, term);
     } else {
         if let Some(ch) = k.as_char() {
-            insert_char(context, ch)
+            commands::insert_char(context, ch)
         } else {
             context.minibuffer.set(&format!("{:?}", k));
         }
