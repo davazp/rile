@@ -10,9 +10,8 @@ fn get_line_indentation(line: &str) -> usize {
 }
 
 pub fn move_beginning_of_line(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line);
+    let buffer = &context.current_buffer;
+    let line = buffer.get_line_unchecked(context.cursor.line);
     let indentation = get_line_indentation(line);
     context.cursor.column = if context.cursor.column <= indentation {
         0
@@ -22,18 +21,14 @@ pub fn move_beginning_of_line(context: &mut Context) {
 }
 
 pub fn move_end_of_line(context: &mut Context) {
-    let eol = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line)
-        .len();
+    let buffer = &context.current_buffer;
+    let eol = buffer.get_line_unchecked(context.cursor.line).len();
     context.cursor.column = eol;
 }
 
 pub fn forward_char(context: &mut Context) {
-    let len = context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line)
-        .len();
+    let buffer = &context.current_buffer;
+    let len = buffer.get_line_unchecked(context.cursor.line).len();
     if context.cursor.column < len {
         context.cursor.column += 1;
     } else {
@@ -97,10 +92,9 @@ pub fn previous_line(context: &mut Context) -> bool {
 }
 
 pub fn insert_char(context: &mut Context, ch: char) {
+    let buffer = &mut context.current_buffer;
     let idx = context.cursor.column;
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
+    let line = buffer.get_line_mut_unchecked(context.cursor.line);
     line.insert(idx, ch);
     context.cursor.column += 1;
 }
@@ -111,16 +105,14 @@ pub fn delete_char(context: &mut Context) {
 }
 
 pub fn delete_backward_char(context: &mut Context) {
+    let buffer = &mut context.current_buffer;
+
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
-        context
-            .current_buffer
-            .remove_char_at(context.cursor.line, context.cursor.column);
+        buffer.remove_char_at(context.cursor.line, context.cursor.column);
     } else if context.cursor.line > 0 {
-        let line = context.current_buffer.remove_line(context.cursor.line);
-        let previous_line = context
-            .current_buffer
-            .get_line_mut_unchecked(context.cursor.line - 1);
+        let line = buffer.remove_line(context.cursor.line);
+        let previous_line = buffer.get_line_mut_unchecked(context.cursor.line - 1);
         let previous_line_original_length = previous_line.len();
         previous_line.push_str(&line);
 
@@ -130,11 +122,10 @@ pub fn delete_backward_char(context: &mut Context) {
 }
 
 pub fn kill_line(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
+    let buffer = &mut context.current_buffer;
+    let line = buffer.get_line_mut_unchecked(context.cursor.line);
     if context.cursor.column == line.len() {
-        if context.cursor.line < context.current_buffer.lines_count() - 1 {
+        if context.cursor.line < buffer.lines_count() - 1 {
             delete_char(context);
         }
     } else {
@@ -143,22 +134,17 @@ pub fn kill_line(context: &mut Context) {
 }
 
 pub fn newline(context: &mut Context) {
-    let line = context
-        .current_buffer
-        .get_line_mut_unchecked(context.cursor.line);
+    let buffer = &mut context.current_buffer;
+    let line = buffer.get_line_mut_unchecked(context.cursor.line);
     let newline = line.split_off(context.cursor.column);
-    context
-        .current_buffer
-        .insert_line_at(context.cursor.line + 1, newline);
-
+    buffer.insert_line_at(context.cursor.line + 1, newline);
     context.cursor.line += 1;
     context.cursor.column = 0;
 }
 
 pub fn indent_line(context: &mut Context) {
-    let line = &context
-        .current_buffer
-        .get_line_unchecked(context.cursor.line);
+    let buffer = &mut context.current_buffer;
+    let line = buffer.get_line_unchecked(context.cursor.line);
     let indent = get_line_indentation(line);
     if context.cursor.column < indent {
         context.cursor.column = indent;
@@ -185,9 +171,10 @@ pub fn save_buffer(context: &mut Context) {
 const CONTEXT_LINES: usize = 2;
 
 pub fn next_screen(context: &mut Context, window: &mut Window, term: &Term) {
+    let buffer = &context.current_buffer;
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
     let target = window.scroll_line + offset;
-    if target < context.current_buffer.lines_count() {
+    if target < buffer.lines_count() {
         window.scroll_line = target;
         context.cursor.line = target;
     } else {
