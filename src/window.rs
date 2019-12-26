@@ -4,16 +4,12 @@ use crate::context::Context;
 use crate::term::{ErasePart, Term};
 
 /// Adjust the scroll level so the cursor is on the screen.
-///
-/// If the cursor is after the screen, the screen will be scrolled so the
-///
-/// If the cursor is before the screen,
 pub fn adjust_scroll(term: &Term, window: &mut Window, context: &mut Context) {
     if context.cursor.line < window.scroll_line {
         window.scroll_line = context.cursor.line;
     }
-    if context.cursor.line > window.scroll_line + term.rows - 2 - 1 {
-        window.scroll_line += 1;
+    if context.cursor.line > window.scroll_line + window.get_window_lines(term) - 1 {
+        window.scroll_line = context.cursor.line - (window.get_window_lines(term) - 1);
     }
 }
 

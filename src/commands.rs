@@ -195,3 +195,15 @@ pub fn previous_screen(context: &mut Context, window: &mut Window, term: &Term) 
         0
     };
 }
+
+pub fn beginning_of_buffer(context: &mut Context) {
+    context.cursor.line = 0;
+    context.cursor.column = 0;
+}
+
+pub fn end_of_buffer(context: &mut Context) {
+    let linenum = context.current_buffer.lines_count() - 1;
+    context.cursor.line = linenum;
+    let line = context.current_buffer.get_line_unchecked(linenum);
+    context.cursor.column = line.len()
+}

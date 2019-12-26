@@ -76,6 +76,10 @@ pub fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Conte
         commands::next_screen(context, win, term);
     } else if k == Key::parse_unchecked("M-v") {
         commands::previous_screen(context, win, term);
+    } else if k == Key::parse_unchecked("M-<") {
+        commands::beginning_of_buffer(context);
+    } else if k == Key::parse_unchecked("M->") {
+        commands::end_of_buffer(context);
     } else {
         if let Some(ch) = k.as_char() {
             commands::insert_char(context, ch)
