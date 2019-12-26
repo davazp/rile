@@ -4,10 +4,12 @@
 extern crate signal_hook;
 
 mod buffer;
+mod context;
 mod key;
 mod term;
 
 use buffer::Buffer;
+use context::{Context, Cursor};
 use key::Key;
 use term::{get_window_size, with_raw_mode, ErasePart, Term};
 
@@ -29,36 +31,6 @@ const PKG_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const PKG_AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 const PKG_DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
 const PKG_GIT_COMMIT: Option<&'static str> = option_env!("GIT_COMMIT");
-
-/// A cursor into a buffer content
-struct Cursor {
-    line: usize,
-    column: usize,
-}
-
-/// The state of the editor.
-struct Context {
-    /// The column that a following [`next-line`](fn.next_line.html) or
-    /// [`previous_line`](fn.previous_line.html) should try to move
-    /// to. This is automatically reset to `None` after each user
-    /// command is processed, unless
-    /// [`to_preserve_goal_column`](#structfield.to_preserve_goal_column)
-    /// is set to true by the command.
-    goal_column: Option<usize>,
-
-    cursor: Cursor,
-    current_buffer: Buffer,
-
-    minibuffer: Buffer,
-
-    // Result of a command. They will take effect once a full command
-    // has been processed.
-    to_exit: bool,
-    to_refresh: bool,
-
-    /// If set by a command, [`goal_column`](#structfield.goal_column) won't be reset after it.
-    to_preserve_goal_column: bool,
-}
 
 // Rendering
 //
