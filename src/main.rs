@@ -408,39 +408,74 @@ fn write_line(term: &mut Term, str: &str, width: usize) {
 }
 
 #[derive(PartialEq, Debug)]
-enum Key {
-    Code(u32),
-    Alt(u32),
-}
-
-/// Return a key made of a character with ctrl pressed.
-///
-/// ## Example
-///
-/// ```
-/// ctrl('q')
-/// ```
-///
-fn ctrl(ch: char) -> Key {
-    Key::Code(0x1f & (ch as u32))
-}
-fn alt(ch: char) -> Key {
-    Key::Alt(ch as u32)
-}
-
-#[allow(unused)]
-/// Return a key from a character.
-fn key(ch: char) -> Key {
-    Key::Code(ch as u32)
+struct Key {
+    meta: bool,
+    code: u32,
 }
 
 impl Key {
+    fn parse_unmodified(key: &str) -> Option<Key> {
+        if key.len() == 1 {
+            Some(Key::from_char(key.chars().next().unwrap()))
+        } else {
+            match key {
+                "DEL" => Some(Key::from_code(127)),
+                "RET" => Some(Key::from_code(13)),
+                "TAB" => Some(Key::from_code(9)),
+                _ => None,
+            }
+        }
+    }
+
+    fn parse(key: &str) -> Option<Key> {
+        if let Some(suffix) = starts_with("C-M-", key) {
+            Some(Key::parse_unmodified(suffix)?.ctrl().alt())
+        } else if let Some(suffix) = starts_with("C-", key) {
+            Some(Key::parse_unmodified(suffix)?.ctrl())
+        } else if let Some(suffix) = starts_with("M-", key) {
+            Some(Key::parse_unmodified(suffix)?.alt())
+        } else {
+            Key::parse_unmodified(key)
+        }
+    }
+
+    fn parse_unchecked(key: &str) -> Key {
+        Key::parse(key).unwrap()
+    }
+
+    fn from_code(code: u32) -> Key {
+        Key { code, meta: false }
+    }
+
+    fn from_char(ch: char) -> Key {
+        Key::from_code(ch as u32)
+    }
+
+    fn alt(mut self) -> Key {
+        self.meta = true;
+        self
+    }
+
+    fn ctrl(mut self) -> Key {
+        self.code = 0x1f & self.code;
+        self
+    }
+
     /// Return a character if the key represents a non-control character.
     fn as_char(&self) -> Option<char> {
-        match self {
-            Key::Code(code) => char::from_u32(*code).filter(|ch| !ch.is_control()),
-            _ => None,
+        if self.meta {
+            None
+        } else {
+            char::from_u32(self.code).filter(|ch| !ch.is_control())
         }
+    }
+}
+
+fn starts_with<'a>(prefix: &str, str: &'a str) -> Option<&'a str> {
+    if str.starts_with(prefix) {
+        Some(&str[prefix.len()..])
+    } else {
+        None
     }
 }
 
@@ -448,10 +483,6 @@ const ARROW_UP: &'static [u8; 2] = b"[A";
 const ARROW_DOWN: &'static [u8; 2] = b"[B";
 const ARROW_RIGHT: &'static [u8; 2] = b"[C";
 const ARROW_LEFT: &'static [u8; 2] = b"[D";
-
-const DELETE: Key = Key::Code(127);
-const RET: Key = Key::Code(13);
-const TAB: Key = Key::Code(9);
 
 /// Read and return a key.
 fn read_key() -> Key {
@@ -463,18 +494,18 @@ fn read_key() -> Key {
         unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
 
         if seq[1] == 0 {
-            Key::Alt(seq[0] as u32)
+            Key::from_code(seq[0] as u32).alt()
         } else {
             match &seq {
-                ARROW_UP => ctrl('p'),
-                ARROW_DOWN => ctrl('n'),
-                ARROW_RIGHT => ctrl('f'),
-                ARROW_LEFT => ctrl('b'),
-                _ => Key::Code(cmd),
+                ARROW_UP => Key::parse_unchecked("C-p"),
+                ARROW_DOWN => Key::parse_unchecked("C-n"),
+                ARROW_RIGHT => Key::parse_unchecked("C-f"),
+                ARROW_LEFT => Key::parse_unchecked("C-b"),
+                _ => Key::from_code(cmd),
             }
         }
     } else {
-        Key::Code(cmd)
+        Key::from_code(cmd)
     }
 }
 
@@ -657,40 +688,40 @@ fn previous_screen(context: &mut Context, window: &mut Window, term: &Term) {
 fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
     let k = read_key();
     context.to_refresh = true;
-    if k == ctrl('a') {
+    if k == Key::parse_unchecked("C-a") {
         move_beginning_of_line(context);
-    } else if k == ctrl('e') {
+    } else if k == Key::parse_unchecked("C-e") {
         move_end_of_line(context);
-    } else if k == ctrl('f') {
+    } else if k == Key::parse_unchecked("C-f") {
         forward_char(context);
-    } else if k == ctrl('b') {
+    } else if k == Key::parse_unchecked("C-b") {
         backward_char(context);
-    } else if k == ctrl('p') {
+    } else if k == Key::parse_unchecked("C-p") {
         previous_line(context);
-    } else if k == ctrl('n') {
+    } else if k == Key::parse_unchecked("C-n") {
         next_line(context);
-    } else if k == ctrl('d') {
+    } else if k == Key::parse_unchecked("C-d") {
         delete_char(context);
-    } else if k == DELETE {
+    } else if k == Key::parse_unchecked("DEL") {
         delete_backward_char(context);
-    } else if k == ctrl('k') {
+    } else if k == Key::parse_unchecked("C-k") {
         kill_line(context);
-    } else if k == RET || k == ctrl('j') {
+    } else if k == Key::parse_unchecked("RET") || k == Key::parse_unchecked("C-j") {
         newline(context);
-    } else if k == TAB {
+    } else if k == Key::parse_unchecked("TAB") {
         indent_line(context);
-    } else if k == ctrl('x') {
+    } else if k == Key::parse_unchecked("C-x") {
         context.minibuffer.set("C-x ");
         refresh_screen(term, win, context);
         let k = read_key();
-        if k == ctrl('c') {
+        if k == Key::parse_unchecked("C-c") {
             context.to_exit = true;
-        } else if k == ctrl('s') {
+        } else if k == Key::parse_unchecked("C-s") {
             save_buffer(context);
         }
-    } else if k == ctrl('v') {
+    } else if k == Key::parse_unchecked("C-v") {
         next_screen(context, win, term);
-    } else if k == alt('v') {
+    } else if k == Key::parse_unchecked("M-v") {
         previous_screen(context, win, term);
     } else {
         if let Some(ch) = k.as_char() {
