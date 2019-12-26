@@ -78,19 +78,33 @@ impl Window {
     fn render_modeline(&self, term: &mut Term, context: &Context) {
         term.csi("38;5;15m");
         term.csi("48;5;236m");
+
+        let buffer_progress = if self.scroll_line == 0 {
+            "Top".to_string()
+        } else if self.scroll_line + self.get_window_lines(term)
+            >= context.current_buffer.lines_count()
+        {
+            "Bot".to_string()
+        } else {
+            format!(
+                "{}%",
+                100 * (context.cursor.line + 1) / context.current_buffer.lines_count()
+            )
+        };
+
         // On MacOsX's terminal, when you erase a line it won't fill the
         // full line with the current attributes, unlike ITerm. So we use
         // `write_line` to pad the string with spaces.
         write_line(
             term,
             &format!(
-                "  {}  {}% L{}",
+                "  {}  {} L{}",
                 context
                     .current_buffer
                     .filename
                     .as_ref()
                     .unwrap_or(&"*scratch*".to_string()),
-                100 * (context.cursor.line + 1) / context.current_buffer.lines_count(),
+                buffer_progress,
                 context.cursor.line + 1
             ),
             term.columns,
