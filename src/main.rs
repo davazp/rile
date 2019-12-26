@@ -58,7 +58,6 @@ fn main() {
             Buffer::from_string("")
         },
         to_exit: false,
-        to_refresh: false,
         to_preserve_goal_column: false,
     };
 
@@ -88,14 +87,11 @@ fn main() {
         }
 
         context.to_preserve_goal_column = false;
-        context.to_refresh = false;
 
         process_user_input(&mut term, &mut window, &mut context);
 
-        if context.to_refresh {
-            adjust_scroll(&mut term, &mut window, &mut context);
-            refresh_screen(&mut term, &mut window, &context);
-        }
+        adjust_scroll(&mut term, &mut window, &mut context);
+        refresh_screen(&mut term, &mut window, &context);
 
         context.minibuffer.truncate();
 

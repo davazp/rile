@@ -41,7 +41,6 @@ fn read_key() -> Key {
 /// Process user input.
 pub fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
     let k = read_key();
-    context.to_refresh = true;
     if k == Key::parse_unchecked("C-a") {
         commands::move_beginning_of_line(context);
     } else if k == Key::parse_unchecked("C-e") {

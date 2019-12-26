@@ -24,7 +24,6 @@ pub struct Context {
     // Result of a command. They will take effect once a full command
     // has been processed.
     pub to_exit: bool,
-    pub to_refresh: bool,
 
     /// If set by a command, [`goal_column`](#structfield.goal_column) won't be reset after it.
     pub to_preserve_goal_column: bool,
