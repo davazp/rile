@@ -23,13 +23,7 @@ fn read_key_binding(term: &mut Term, context: &mut Context) -> Result<CommandHan
 
     loop {
         if !read.is_empty() {
-            let keys = format!(
-                "{}",
-                read.iter()
-                    .map(|k| format!("{}", k))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            );
+            let keys = Key::format_seq(&read) + "-";
             context.minibuffer.set(&keys);
             refresh_screen(term, context);
         }
@@ -74,7 +68,9 @@ pub fn process_user_input(term: &mut Term, context: &mut Context) {
             if let Some(ch) = is_self_insert(&keys) {
                 commands::insert_char(context, ch);
             } else {
-                context.minibuffer.set(&format!("{:?} is undefined", keys));
+                context
+                    .minibuffer
+                    .set(&format!("{} is undefined", Key::format_seq(&keys)));
             }
         }
     }

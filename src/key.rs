@@ -81,6 +81,16 @@ impl Key {
             char::from_u32(self.code).filter(|ch| !ch.is_control())
         }
     }
+
+    pub fn format_seq(key: &[Key]) -> String {
+        format!(
+            "{}",
+            key.iter()
+                .map(|k| format!("{}", k))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
+    }
 }
 
 /// Check if `str` starts with `prefix` and strip it.
@@ -98,8 +108,12 @@ impl fmt::Display for Key {
             write!(f, "C-",)?
         };
         if self.meta {
-            write!(f, "C-",)?
+            write!(f, "M-",)?
         };
-        write!(f, "{:?}", self)
+        write!(
+            f,
+            "{}",
+            char::from_u32(self.code + ('a' as u32 & !0x1f)).unwrap()
+        )
     }
 }
