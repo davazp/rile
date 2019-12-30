@@ -39,7 +39,7 @@ impl Keymap {
 
     pub fn defaults() -> Keymap {
         let mut keymap = Keymap::new();
-        let mut m_x = Keymap::new();
+        let mut c_x = Keymap::new();
 
         keymap.define_key("C-a", commands::move_beginning_of_line);
         keymap.define_key("C-e", commands::move_end_of_line);
@@ -61,9 +61,9 @@ impl Keymap {
         keymap.define_key("C-v", commands::next_screen);
         keymap.define_key("M-v", commands::previous_screen);
 
-        m_x.define_key("C-s", commands::save_buffer);
-        m_x.define_key("C-c", commands::kill_emacs);
-        keymap.define_keymap("C-x", m_x);
+        c_x.define_key("C-s", commands::save_buffer);
+        c_x.define_key("C-c", commands::kill_emacs);
+        keymap.define_keymap("C-x", c_x);
 
         keymap
     }
