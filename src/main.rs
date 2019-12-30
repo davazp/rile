@@ -98,13 +98,6 @@ fn main() {
         adjust_scroll(&mut term, &mut context);
         refresh_screen(&mut term, &context);
 
-        // Remove the content of the minibuffer.
-        //
-        // We do NOT refresh the screen between this call and the next
-        // `process_user_input`, so the message remains in the screen
-        // until they press some key.
-        context.minibuffer.truncate();
-
         if !context.to_preserve_goal_column {
             context.goal_column = None;
         }
