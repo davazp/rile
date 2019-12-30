@@ -1,4 +1,6 @@
 use crate::buffer::Buffer;
+use crate::keymap::Keymap;
+use crate::window::Window;
 
 /// A cursor into a buffer content
 pub struct Cursor {
@@ -20,6 +22,9 @@ pub struct Context {
     pub current_buffer: Buffer,
 
     pub minibuffer: Buffer,
+
+    pub window: Window,
+    pub keymap: Keymap,
 
     // Result of a command. They will take effect once a full command
     // has been processed.

@@ -1,90 +1,64 @@
-use nix;
-use nix::libc;
-use nix::unistd;
-
+use crate::buffer::Buffer;
 use crate::commands;
 use crate::context::Context;
 use crate::key::Key;
-use crate::term::Term;
-use crate::window::{refresh_screen, Window};
+use crate::keymap::{CommandHandler, Item, Keymap};
+use crate::term::{read_key, Term};
 
-const ARROW_UP: &'static [u8; 2] = b"[A";
-const ARROW_DOWN: &'static [u8; 2] = b"[B";
-const ARROW_RIGHT: &'static [u8; 2] = b"[C";
-const ARROW_LEFT: &'static [u8; 2] = b"[D";
+fn read_key_binding(
+    minibuffer: &mut Buffer,
+    keymap: &Keymap,
+    mut read: Vec<Key>,
+) -> Result<CommandHandler, Vec<Key>> {
+    if !read.is_empty() {
+        minibuffer.set(&format!(
+            "{}",
+            read.iter()
+                .map(|k| format!("{}", k))
+                .collect::<Vec<String>>()
+                .join(" ")
+        ));
+    }
 
-/// Read and return a key.
-fn read_key() -> Key {
-    let mut buf = [0u8];
-    unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
-    let cmd = buf[0] as u32;
-    if cmd == 0x1b {
-        let mut seq: [u8; 2] = [0; 2];
-        unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
+    let k = read_key();
+    let item = keymap.lookup(&k);
 
-        if seq[1] == 0 {
-            Key::from_code(seq[0] as u32).meta()
-        } else {
-            match &seq {
-                ARROW_UP => Key::parse_unchecked("C-p"),
-                ARROW_DOWN => Key::parse_unchecked("C-n"),
-                ARROW_RIGHT => Key::parse_unchecked("C-f"),
-                ARROW_LEFT => Key::parse_unchecked("C-b"),
-                _ => Key::from_code(cmd),
-            }
+    read.push(k);
+
+    match item {
+        Some(Item::Command(cmd)) => {
+            minibuffer.truncate();
+            Ok(*cmd)
         }
+        Some(Item::Keymap(km)) => read_key_binding(minibuffer, &km, read),
+        None => Err(read),
+    }
+}
+
+fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
+    if keys.len() != 1 {
+        None
+    } else if let Some(ch) = keys[0].as_char() {
+        Some(ch)
     } else {
-        Key::from_code(cmd)
+        None
     }
 }
 
 /// Process user input.
-pub fn process_user_input(term: &mut Term, win: &mut Window, context: &mut Context) {
-    let k = read_key();
-    if k == Key::parse_unchecked("C-a") {
-        commands::move_beginning_of_line(context);
-    } else if k == Key::parse_unchecked("C-e") {
-        commands::move_end_of_line(context);
-    } else if k == Key::parse_unchecked("C-f") {
-        commands::forward_char(context);
-    } else if k == Key::parse_unchecked("C-b") {
-        commands::backward_char(context);
-    } else if k == Key::parse_unchecked("C-p") {
-        commands::previous_line(context);
-    } else if k == Key::parse_unchecked("C-n") {
-        commands::next_line(context);
-    } else if k == Key::parse_unchecked("C-d") {
-        commands::delete_char(context);
-    } else if k == Key::parse_unchecked("DEL") {
-        commands::delete_backward_char(context);
-    } else if k == Key::parse_unchecked("C-k") {
-        commands::kill_line(context);
-    } else if k == Key::parse_unchecked("RET") || k == Key::parse_unchecked("C-j") {
-        commands::newline(context);
-    } else if k == Key::parse_unchecked("TAB") {
-        commands::indent_line(context);
-    } else if k == Key::parse_unchecked("C-x") {
-        context.minibuffer.set("C-x ");
-        refresh_screen(term, win, context);
-        let k = read_key();
-        if k == Key::parse_unchecked("C-c") {
-            context.to_exit = true;
-        } else if k == Key::parse_unchecked("C-s") {
-            commands::save_buffer(context);
+pub fn process_user_input(term: &Term, context: &mut Context) {
+    let cmd = read_key_binding(&mut context.minibuffer, &context.keymap, vec![]);
+    // Execute the command.
+    match cmd {
+        Ok(handler) => {
+            let _ = handler(context, term);
         }
-    } else if k == Key::parse_unchecked("C-v") {
-        commands::next_screen(context, win, term);
-    } else if k == Key::parse_unchecked("M-v") {
-        commands::previous_screen(context, win, term);
-    } else if k == Key::parse_unchecked("M-<") {
-        commands::beginning_of_buffer(context);
-    } else if k == Key::parse_unchecked("M->") {
-        commands::end_of_buffer(context);
-    } else {
-        if let Some(ch) = k.as_char() {
-            commands::insert_char(context, ch)
-        } else {
-            context.minibuffer.set(&format!("{:?}", k));
+        Err(keys) => {
+            if let Some(ch) = is_self_insert(&keys) {
+                commands::insert_char(context, ch);
+            } else {
+                context.minibuffer.set(&format!("{:?} is undefined", keys));
+            }
         }
     }
 }

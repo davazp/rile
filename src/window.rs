@@ -4,7 +4,8 @@ use crate::context::Context;
 use crate::term::{ErasePart, Term};
 
 /// Adjust the scroll level so the cursor is on the screen.
-pub fn adjust_scroll(term: &Term, window: &mut Window, context: &mut Context) {
+pub fn adjust_scroll(term: &Term, context: &mut Context) {
+    let window = &mut context.window;
     if context.cursor.line < window.scroll_line {
         window.scroll_line = context.cursor.line;
     }
@@ -120,7 +121,9 @@ fn render_minibuffer(term: &mut Term, context: &Context) {
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-pub fn refresh_screen(term: &mut Term, win: &Window, context: &Context) {
+pub fn refresh_screen(term: &mut Term, context: &Context) {
+    let win = &context.window;
+
     term.hide_cursor();
 
     win.render_window(term, context);

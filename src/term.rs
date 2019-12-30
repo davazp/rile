@@ -4,6 +4,8 @@ use nix::unistd;
 use std::env;
 use std::mem;
 
+use crate::key::Key;
+
 /// Execute a function with the terminal in raw mode.
 ///
 /// The argument `run` will be executed with the terminal in "raw
@@ -163,4 +165,34 @@ pub fn get_window_size() -> (usize, usize) {
 #[allow(unused)]
 fn support_true_color() -> bool {
     env::var("COLORTERM") == Ok(String::from("truecolor"))
+}
+
+/// Read and return a key.
+pub fn read_key() -> Key {
+    const ARROW_UP: &'static [u8; 2] = b"[A";
+    const ARROW_DOWN: &'static [u8; 2] = b"[B";
+    const ARROW_RIGHT: &'static [u8; 2] = b"[C";
+    const ARROW_LEFT: &'static [u8; 2] = b"[D";
+
+    let mut buf = [0u8];
+    unistd::read(libc::STDIN_FILENO, &mut buf).unwrap();
+    let cmd = buf[0] as u32;
+    if cmd == 0x1b {
+        let mut seq: [u8; 2] = [0; 2];
+        unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
+
+        if seq[1] == 0 {
+            Key::from_code(seq[0] as u32).meta()
+        } else {
+            match &seq {
+                ARROW_UP => Key::parse_unchecked("C-p"),
+                ARROW_DOWN => Key::parse_unchecked("C-n"),
+                ARROW_RIGHT => Key::parse_unchecked("C-f"),
+                ARROW_LEFT => Key::parse_unchecked("C-b"),
+                _ => Key::from_code(cmd),
+            }
+        }
+    } else {
+        Key::from_code(cmd)
+    }
 }

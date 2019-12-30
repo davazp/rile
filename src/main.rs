@@ -8,12 +8,14 @@ mod commands;
 mod context;
 mod dispatcher;
 mod key;
+mod keymap;
 mod term;
 mod window;
 
 use buffer::Buffer;
 use context::{Context, Cursor};
 use dispatcher::process_user_input;
+use keymap::Keymap;
 use term::{get_window_size, with_raw_mode, Term};
 use window::{adjust_scroll, refresh_screen, Window};
 
@@ -57,13 +59,16 @@ fn main() {
         } else {
             Buffer::from_string("")
         },
+
+        keymap: Keymap::defaults(),
+
+        window: Window {
+            show_lines: false,
+            scroll_line: 0,
+        },
+
         to_exit: false,
         to_preserve_goal_column: false,
-    };
-
-    let mut window = Window {
-        show_lines: false,
-        scroll_line: 0,
     };
 
     // Detect when the terminal was resized
@@ -74,24 +79,24 @@ fn main() {
 
     term.enable_alternative_screen_buffer();
 
-    refresh_screen(&mut term, &mut window, &context);
+    refresh_screen(&mut term, &context);
 
     with_raw_mode(|| loop {
         if was_resize.load(Ordering::Relaxed) {
             let (rows, columns) = get_window_size();
             term.rows = rows;
             term.columns = columns;
-            adjust_scroll(&mut term, &mut window, &mut context);
-            refresh_screen(&mut term, &mut window, &context);
+            adjust_scroll(&mut term, &mut context);
+            refresh_screen(&mut term, &context);
             was_resize.store(false, Ordering::Relaxed);
         }
 
         context.to_preserve_goal_column = false;
 
-        process_user_input(&mut term, &mut window, &mut context);
+        process_user_input(&mut term, &mut context);
 
-        adjust_scroll(&mut term, &mut window, &mut context);
-        refresh_screen(&mut term, &mut window, &context);
+        adjust_scroll(&mut term, &mut context);
+        refresh_screen(&mut term, &context);
 
         // Remove the content of the minibuffer.
         //

@@ -1,7 +1,8 @@
 use std::char;
+use std::fmt;
 
 /// A key press.
-#[derive(PartialEq, Debug)]
+#[derive(Eq, Hash, PartialEq, Debug)]
 pub struct Key {
     // `meta` is true if the meta modified key (usually alt) is active
     // during this key press as well.
@@ -68,6 +69,10 @@ impl Key {
         self
     }
 
+    pub fn is_ctrl(&self) -> bool {
+        self.code == 0x1f & self.code
+    }
+
     /// Return a character if the key represents a non-control character.
     pub fn as_char(&self) -> Option<char> {
         if self.meta {
@@ -84,5 +89,17 @@ fn starts_with<'a>(prefix: &str, str: &'a str) -> Option<&'a str> {
         Some(&str[prefix.len()..])
     } else {
         None
+    }
+}
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_ctrl() {
+            write!(f, "C-",)?
+        };
+        if self.meta {
+            write!(f, "C-",)?
+        };
+        write!(f, "{:?}", self)
     }
 }
