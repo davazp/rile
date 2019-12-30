@@ -199,11 +199,14 @@ pub fn read_key_timeout() -> Option<Key> {
     }
 }
 
-pub fn reconciliate_term_size(term: &mut Term, was_resized: &AtomicBool) {
+pub fn reconciliate_term_size(term: &mut Term, was_resized: &AtomicBool) -> bool {
     if was_resized.load(Ordering::Relaxed) {
         let (rows, columns) = get_window_size();
         term.rows = rows;
         term.columns = columns;
         was_resized.store(false, Ordering::Relaxed);
+        true
+    } else {
+        false
     }
 }

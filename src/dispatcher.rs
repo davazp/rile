@@ -10,9 +10,10 @@ fn read_single_key(term: &mut Term, context: &Context) -> Key {
         if let Some(key) = read_key_timeout() {
             return key;
         } else {
-            reconciliate_term_size(term, &context.was_resized);
-            adjust_scroll(term, context);
-            refresh_screen(term, context);
+            if reconciliate_term_size(term, &context.was_resized) {
+                adjust_scroll(term, context);
+                refresh_screen(term, context);
+            }
         }
     }
 }
