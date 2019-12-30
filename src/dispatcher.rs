@@ -1,37 +1,39 @@
-use crate::buffer::Buffer;
 use crate::commands;
 use crate::context::Context;
 use crate::key::Key;
-use crate::keymap::{CommandHandler, Item, Keymap};
+use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key, Term};
+use crate::window::refresh_screen;
 
-fn read_key_binding(
-    minibuffer: &mut Buffer,
-    keymap: &Keymap,
-    mut read: Vec<Key>,
-) -> Result<CommandHandler, Vec<Key>> {
-    if !read.is_empty() {
-        minibuffer.set(&format!(
-            "{}",
-            read.iter()
-                .map(|k| format!("{}", k))
-                .collect::<Vec<String>>()
-                .join(" ")
-        ));
-    }
+fn read_key_binding(term: &mut Term, context: &mut Context) -> Result<CommandHandler, Vec<Key>> {
+    let mut read = vec![];
+    let mut keymap = &context.keymap;
 
-    let k = read_key();
-    let item = keymap.lookup(&k);
-
-    read.push(k);
-
-    match item {
-        Some(Item::Command(cmd)) => {
-            minibuffer.truncate();
-            Ok(*cmd)
+    loop {
+        if !read.is_empty() {
+            let keys = format!(
+                "{}",
+                read.iter()
+                    .map(|k| format!("{}", k))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            );
+            context.minibuffer.set(&keys);
+            refresh_screen(term, context);
         }
-        Some(Item::Keymap(km)) => read_key_binding(minibuffer, &km, read),
-        None => Err(read),
+
+        let k = read_key();
+        let item = keymap.lookup(&k);
+
+        read.push(k);
+
+        match item {
+            Some(Item::Command(cmd)) => return Ok(*cmd),
+            Some(Item::Keymap(km)) => {
+                keymap = km;
+            }
+            None => break Err(read),
+        }
     }
 }
 
@@ -46,8 +48,11 @@ fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
 }
 
 /// Process user input.
-pub fn process_user_input(term: &Term, context: &mut Context) {
-    let cmd = read_key_binding(&mut context.minibuffer, &context.keymap, vec![]);
+pub fn process_user_input(term: &mut Term, context: &mut Context) {
+    let cmd = read_key_binding(term, context);
+
+    context.minibuffer.truncate();
+
     // Execute the command.
     match cmd {
         Ok(handler) => {
