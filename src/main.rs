@@ -16,11 +16,11 @@ use buffer::Buffer;
 use context::{Context, Cursor};
 use dispatcher::process_user_input;
 use keymap::Keymap;
-use term::{get_window_size, with_raw_mode, Term};
+use term::{with_raw_mode, Term};
 use window::{adjust_scroll, refresh_screen, Window};
 
 use std::env;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use clap::{App, Arg};
@@ -67,13 +67,13 @@ fn main() {
             scroll_line: 0,
         },
 
+        was_resized: Arc::new(AtomicBool::new(false)),
+
         to_exit: false,
         to_preserve_goal_column: false,
     };
 
-    // Detect when the terminal was resized
-    let was_resize = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(signal_hook::SIGWINCH, Arc::clone(&was_resize)).unwrap();
+    signal_hook::flag::register(signal_hook::SIGWINCH, context.was_resized.clone()).unwrap();
 
     let mut term = Term::new();
 
@@ -82,15 +82,6 @@ fn main() {
     refresh_screen(&mut term, &context);
 
     with_raw_mode(|| loop {
-        if was_resize.load(Ordering::Relaxed) {
-            let (rows, columns) = get_window_size();
-            term.rows = rows;
-            term.columns = columns;
-            adjust_scroll(&mut term, &mut context);
-            refresh_screen(&mut term, &context);
-            was_resize.store(false, Ordering::Relaxed);
-        }
-
         context.to_preserve_goal_column = false;
 
         process_user_input(&mut term, &mut context);

@@ -2,8 +2,20 @@ use crate::commands;
 use crate::context::Context;
 use crate::key::Key;
 use crate::keymap::{CommandHandler, Item};
-use crate::term::{read_key, Term};
-use crate::window::refresh_screen;
+use crate::term::{read_key_timeout, reconciliate_term_size, Term};
+use crate::window::{adjust_scroll, refresh_screen};
+
+fn read_single_key(term: &mut Term, context: &Context) -> Key {
+    loop {
+        if let Some(key) = read_key_timeout() {
+            return key;
+        } else {
+            reconciliate_term_size(term, &context.was_resized);
+            //adjust_scroll(term, context);
+            refresh_screen(term, context);
+        }
+    }
+}
 
 fn read_key_binding(term: &mut Term, context: &mut Context) -> Result<CommandHandler, Vec<Key>> {
     let mut read = vec![];
@@ -22,7 +34,7 @@ fn read_key_binding(term: &mut Term, context: &mut Context) -> Result<CommandHan
             refresh_screen(term, context);
         }
 
-        let k = read_key();
+        let k = read_single_key(term, context);
         let item = keymap.lookup(&k);
 
         read.push(k);

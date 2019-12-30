@@ -1,3 +1,6 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
 use crate::buffer::Buffer;
 use crate::keymap::Keymap;
 use crate::window::Window;
@@ -29,6 +32,8 @@ pub struct Context {
     // Result of a command. They will take effect once a full command
     // has been processed.
     pub to_exit: bool,
+
+    pub was_resized: Arc<AtomicBool>,
 
     /// If set by a command, [`goal_column`](#structfield.goal_column) won't be reset after it.
     pub to_preserve_goal_column: bool,

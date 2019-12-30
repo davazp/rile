@@ -3,6 +3,7 @@ use nix::sys::termios;
 use nix::unistd;
 use std::env;
 use std::mem;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::key::Key;
 
@@ -37,9 +38,8 @@ pub fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
     termios.input_flags &= !termios::InputFlags::ISTRIP;
     termios.control_flags |= termios::ControlFlags::CS8;
 
-    // Be okay with read() returning 0 bytes read, and add a time out
-    // of 1 1/10 of a second (100 ms)
-    // termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
+    // Be okay with read() returning 0 bytes read
+    termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
     // termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
 
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
@@ -168,7 +168,7 @@ fn support_true_color() -> bool {
 }
 
 /// Read and return a key.
-pub fn read_key() -> Key {
+pub fn read_key_timeout() -> Option<Key> {
     const ARROW_UP: &'static [u8; 2] = b"[A";
     const ARROW_DOWN: &'static [u8; 2] = b"[B";
     const ARROW_RIGHT: &'static [u8; 2] = b"[C";
@@ -182,17 +182,28 @@ pub fn read_key() -> Key {
         unistd::read(libc::STDIN_FILENO, &mut seq).unwrap();
 
         if seq[1] == 0 {
-            Key::from_code(seq[0] as u32).meta()
+            Some(Key::from_code(seq[0] as u32).meta())
         } else {
             match &seq {
-                ARROW_UP => Key::parse_unchecked("C-p"),
-                ARROW_DOWN => Key::parse_unchecked("C-n"),
-                ARROW_RIGHT => Key::parse_unchecked("C-f"),
-                ARROW_LEFT => Key::parse_unchecked("C-b"),
-                _ => Key::from_code(cmd),
+                ARROW_UP => Some(Key::parse_unchecked("C-p")),
+                ARROW_DOWN => Some(Key::parse_unchecked("C-n")),
+                ARROW_RIGHT => Some(Key::parse_unchecked("C-f")),
+                ARROW_LEFT => Some(Key::parse_unchecked("C-b")),
+                _ => None,
             }
         }
+    } else if cmd > 0 {
+        Some(Key::from_code(cmd))
     } else {
-        Key::from_code(cmd)
+        None
+    }
+}
+
+pub fn reconciliate_term_size(term: &mut Term, was_resized: &AtomicBool) {
+    if was_resized.load(Ordering::Relaxed) {
+        let (rows, columns) = get_window_size();
+        term.rows = rows;
+        term.columns = columns;
+        was_resized.store(false, Ordering::Relaxed);
     }
 }

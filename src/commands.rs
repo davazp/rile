@@ -185,7 +185,7 @@ const CONTEXT_LINES: usize = 2;
 
 pub fn next_screen(context: &mut Context, term: &Term) -> Result {
     let buffer = &context.current_buffer;
-    let window = &mut context.window;
+    let mut window = &mut context.window;
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
     let target = window.scroll_line + offset;
     if target < buffer.lines_count() {
@@ -199,7 +199,7 @@ pub fn next_screen(context: &mut Context, term: &Term) -> Result {
 }
 
 pub fn previous_screen(context: &mut Context, term: &Term) -> Result {
-    let window = &mut context.window;
+    let mut window = &mut context.window;
     if window.scroll_line == 0 {
         context.minibuffer.set("Beginning of buffer");
         return Err(());
