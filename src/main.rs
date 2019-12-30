@@ -62,10 +62,7 @@ fn main() {
 
         keymap: Keymap::defaults(),
 
-        window: Window {
-            show_lines: false,
-            scroll_line: 0,
-        },
+        window: Window::new(),
 
         was_resized: Arc::new(AtomicBool::new(false)),
 

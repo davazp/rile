@@ -1,24 +1,34 @@
+use std::cell::Cell;
 use std::cmp;
 
 use crate::context::Context;
 use crate::term::{ErasePart, Term};
 
 /// Adjust the scroll level so the cursor is on the screen.
-pub fn adjust_scroll(term: &Term, context: &mut Context) {
-    let window = &mut context.window;
-    if context.cursor.line < window.scroll_line {
-        window.scroll_line = context.cursor.line;
+pub fn adjust_scroll(term: &Term, context: &Context) {
+    let window = &context.window;
+    if context.cursor.line < window.scroll_line.get() {
+        window.scroll_line.set(context.cursor.line);
     }
-    if context.cursor.line > window.scroll_line + window.get_window_lines(term) - 1 {
-        window.scroll_line = context.cursor.line - (window.get_window_lines(term) - 1);
+    if context.cursor.line > window.scroll_line.get() + window.get_window_lines(term) - 1 {
+        window
+            .scroll_line
+            .set(context.cursor.line - (window.get_window_lines(term) - 1));
     }
 }
 
 pub struct Window {
-    pub scroll_line: usize,
+    pub scroll_line: Cell<usize>,
     pub show_lines: bool,
 }
 impl Window {
+    pub fn new() -> Window {
+        Window {
+            scroll_line: Cell::new(0),
+            show_lines: false,
+        }
+    }
+
     pub fn get_window_lines(&self, term: &Term) -> usize {
         term.rows - 2
     }
@@ -26,7 +36,7 @@ impl Window {
     fn get_pad_width(&self, term: &Term) -> usize {
         if self.show_lines {
             let last_linenum_width =
-                format!("{}", self.scroll_line + self.get_window_lines(term)).len();
+                format!("{}", self.scroll_line.get() + self.get_window_lines(term)).len();
             last_linenum_width + 1
         } else {
             0
@@ -35,7 +45,7 @@ impl Window {
 
     fn render_cursor(&self, term: &mut Term, context: &Context) {
         term.set_cursor(
-            context.cursor.line - self.scroll_line + 1,
+            context.cursor.line - self.scroll_line.get() + 1,
             context.cursor.column + self.get_pad_width(term) + 1,
         );
     }
@@ -54,7 +64,7 @@ impl Window {
 
         // Main window
         for row in 0..window_lines {
-            let linenum = row + self.scroll_line;
+            let linenum = row + self.scroll_line.get();
 
             if let Some(line) = buffer.get_line(linenum) {
                 if self.show_lines {
@@ -76,10 +86,11 @@ impl Window {
         term.csi("38;5;15m");
         term.csi("48;5;236m");
 
-        let buffer_progress = if self.scroll_line == 0 {
+        let scroll_line = self.scroll_line.get();
+
+        let buffer_progress = if scroll_line == 0 {
             "Top".to_string()
-        } else if self.scroll_line + self.get_window_lines(term)
-            >= context.current_buffer.lines_count()
+        } else if scroll_line + self.get_window_lines(term) >= context.current_buffer.lines_count()
         {
             "Bot".to_string()
         } else {

@@ -185,11 +185,11 @@ const CONTEXT_LINES: usize = 2;
 
 pub fn next_screen(context: &mut Context, term: &Term) -> Result {
     let buffer = &context.current_buffer;
-    let mut window = &mut context.window;
+    let window = &context.window;
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
-    let target = window.scroll_line + offset;
+    let target = window.scroll_line.get() + offset;
     if target < buffer.lines_count() {
-        window.scroll_line = target;
+        window.scroll_line.set(target);
         context.cursor.line = target;
         Ok(())
     } else {
@@ -199,18 +199,20 @@ pub fn next_screen(context: &mut Context, term: &Term) -> Result {
 }
 
 pub fn previous_screen(context: &mut Context, term: &Term) -> Result {
-    let mut window = &mut context.window;
-    if window.scroll_line == 0 {
+    let window = &context.window;
+    if window.scroll_line.get() == 0 {
         context.minibuffer.set("Beginning of buffer");
         return Err(());
     }
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
-    context.cursor.line = window.scroll_line + CONTEXT_LINES;
-    window.scroll_line = if let Some(scroll_line) = window.scroll_line.checked_sub(offset) {
-        scroll_line
-    } else {
-        0
-    };
+    context.cursor.line = window.scroll_line.get() + CONTEXT_LINES;
+    window.scroll_line.set(
+        if let Some(scroll_line) = window.scroll_line.get().checked_sub(offset) {
+            scroll_line
+        } else {
+            0
+        },
+    );
     Ok(())
 }
 
