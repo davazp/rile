@@ -1,5 +1,5 @@
 use crate::context::Context;
-use crate::event_loop::process_user_input;
+use crate::event_loop::event_loop;
 use crate::key::Key;
 use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
@@ -24,12 +24,12 @@ pub fn read_key_binding(
     context: &mut Context,
 ) -> Result<CommandHandler, Vec<Key>> {
     let mut read = vec![];
-    let mut keymap = &context.keymap;
+    let mut keymap = &context.buffer_list.get_current_buffer().keymap;
 
     loop {
         if !read.is_empty() {
-            let keys = Key::format_seq(&read) + "-";
-            context.buffer_list.minibuffer.set(keys);
+            // let keys = Key::format_seq(&read) + "-";
+            // context.buffer_list.minibuffer.set(keys);
             refresh_screen(term, context);
         }
 
@@ -55,10 +55,16 @@ pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Resu
     context.cursor.line = 0;
     context.cursor.column = prompt.len();
 
-    while process_user_input(term, context) {}
+    let success = event_loop(term, context);
+
+    let result = if success {
+        Ok(context.buffer_list.minibuffer.to_string())
+    } else {
+        Err(())
+    };
 
     context.buffer_list.minibuffer_focused = false;
     context.buffer_list.minibuffer.truncate();
 
-    Ok("test".to_string())
+    result
 }

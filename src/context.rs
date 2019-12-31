@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use crate::buffer::BufferList;
-use crate::keymap::Keymap;
+use crate::event_loop;
 use crate::window::Window;
 
 /// A cursor into a buffer content
@@ -22,11 +22,8 @@ pub struct Context {
     pub buffer_list: BufferList,
 
     pub window: Window,
-    pub keymap: Keymap,
 
-    // Result of a command. They will take effect once a full command
-    // has been processed.
-    pub to_exit: bool,
+    pub event_loop: event_loop::EventLoopState,
 
     pub was_resized: Arc<AtomicBool>,
 

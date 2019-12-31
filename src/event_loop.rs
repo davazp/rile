@@ -4,6 +4,31 @@ use crate::key::Key;
 use crate::read;
 use crate::term::Term;
 
+type Result = std::result::Result<(), ()>;
+
+pub struct EventLoopState {
+    /// If set (Some), the event loop is about to terminate with a
+    /// specified Result.
+    pub result: Option<Result>,
+}
+
+impl EventLoopState {
+    pub fn new() -> EventLoopState {
+        EventLoopState { result: None }
+    }
+
+    pub fn complete(&mut self, result: Result) {
+        self.result = Some(result)
+    }
+
+    pub fn is_exit_successfully(&self) -> bool {
+        match self.result {
+            Some(Ok(_)) => true,
+            _ => false,
+        }
+    }
+}
+
 fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
     if keys.len() != 1 {
         None
@@ -42,4 +67,22 @@ pub fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     };
 
     true
+}
+
+pub fn event_loop(term: &mut Term, context: &mut Context) -> bool {
+    // Save the context for a recursive event loop.
+    let original_result = context.event_loop.result;
+
+    let status = loop {
+        context.event_loop.result = None;
+        process_user_input(term, context);
+        if let Some(result) = context.event_loop.result {
+            break result;
+        }
+    };
+
+    // Restore the saved context.
+    context.event_loop.result = original_result;
+
+    status.is_ok()
 }

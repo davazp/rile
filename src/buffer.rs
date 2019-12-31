@@ -1,7 +1,10 @@
+use crate::keymap::Keymap;
+use crate::minibuffer;
 use std::fs;
 
 /// A buffer contains text that can be edited.
 pub struct Buffer {
+    pub keymap: Keymap,
     pub filename: Option<String>,
     /// All lines of this buffer.
     lines: Vec<String>,
@@ -12,8 +15,10 @@ impl Buffer {
         Buffer {
             lines: vec!["".to_string()],
             filename: None,
+            keymap: Keymap::defaults(),
         }
     }
+
     pub fn from_string(str: &str) -> Buffer {
         let mut buffer = Buffer::new();
         buffer.set(str);
@@ -105,7 +110,7 @@ impl BufferList {
         BufferList {
             minibuffer_focused: false,
             main_buffer: main,
-            minibuffer: Buffer::new(),
+            minibuffer: minibuffer::new(),
         }
     }
 

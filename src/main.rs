@@ -9,14 +9,14 @@ mod context;
 mod event_loop;
 mod key;
 mod keymap;
+mod minibuffer;
 mod read;
 mod term;
 mod window;
 
 use buffer::{Buffer, BufferList};
 use context::{Context, Cursor, GoalColumn};
-use event_loop::process_user_input;
-use keymap::Keymap;
+use event_loop::{process_user_input, EventLoopState};
 use term::{with_raw_mode, Term};
 use window::{adjust_scroll, refresh_screen, Window};
 
@@ -59,13 +59,11 @@ fn main() {
             Buffer::from_string("")
         }),
 
-        keymap: Keymap::defaults(),
-
         window: Window::new(),
 
         was_resized: Arc::new(AtomicBool::new(false)),
 
-        to_exit: false,
+        event_loop: EventLoopState::new(),
 
         goal_column: GoalColumn {
             to_preserve: false,
@@ -93,7 +91,7 @@ fn main() {
             context.goal_column.column = None;
         }
 
-        if context.to_exit {
+        if context.event_loop.is_exit_successfully() {
             break;
         }
     })

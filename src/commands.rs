@@ -233,11 +233,18 @@ pub fn end_of_buffer(context: &mut Context, _term: &mut Term) -> Result {
 }
 
 pub fn kill_emacs(context: &mut Context, _term: &mut Term) -> Result {
-    context.to_exit = true;
+    context.event_loop.complete(Ok(()));
     Ok(())
 }
 
 pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
-    read::read_string(term, context, "M-x ");
+    if let Ok(str) = read::read_string(term, context, "M-x ") {
+        context.buffer_list.get_current_buffer_as_mut().set(str);
+    }
+    Ok(())
+}
+
+pub fn keyboard_quit(context: &mut Context, _term: &mut Term) -> Result {
+    context.event_loop.complete(Err(()));
     Ok(())
 }
