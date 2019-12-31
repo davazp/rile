@@ -7,11 +7,13 @@ use crate::term::Term;
 
 pub type CommandHandler = fn(&mut Context, term: &mut Term) -> commands::Result;
 
+#[derive(Clone)]
 pub enum Item {
     Command(CommandHandler),
     Keymap(Keymap),
 }
 
+#[derive(Clone)]
 pub struct Keymap {
     inner: HashMap<Key, Item>,
 }

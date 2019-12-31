@@ -2,7 +2,7 @@ use std::char;
 use std::fmt;
 
 /// A key press.
-#[derive(Eq, Hash, PartialEq, Debug)]
+#[derive(Eq, Hash, PartialEq, Debug, Clone)]
 pub struct Key {
     // `meta` is true if the meta modified key (usually alt) is active
     // during this key press as well.

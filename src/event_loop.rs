@@ -15,7 +15,7 @@ fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
 }
 
 /// Process user input.
-pub fn process_user_input(term: &mut Term, context: &mut Context) {
+pub fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     let cmd = read::read_key_binding(term, context);
     let minibuffer = &mut context.buffer_list.minibuffer;
 
@@ -29,11 +29,17 @@ pub fn process_user_input(term: &mut Term, context: &mut Context) {
             let _ = handler(context, term);
         }
         Err(keys) => {
+            if keys == vec![Key::parse_unchecked("C-g")] {
+                return false;
+            }
+
             if let Some(ch) = is_self_insert(&keys) {
                 commands::insert_char(context, ch);
             } else {
                 minibuffer.set(format!("{} is undefined", Key::format_seq(&keys)));
             }
         }
-    }
+    };
+
+    true
 }

@@ -1,4 +1,5 @@
 use crate::context::Context;
+use crate::event_loop::process_user_input;
 use crate::key::Key;
 use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
@@ -45,4 +46,19 @@ pub fn read_key_binding(
             None => break Err(read),
         }
     }
+}
+
+pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Result<String, ()> {
+    context.buffer_list.minibuffer.set(prompt);
+    context.buffer_list.minibuffer_focused = true;
+
+    context.cursor.line = 0;
+    context.cursor.column = prompt.len();
+
+    while process_user_input(term, context) {}
+
+    context.buffer_list.minibuffer_focused = false;
+    context.buffer_list.minibuffer.truncate();
+
+    Ok("test".to_string())
 }

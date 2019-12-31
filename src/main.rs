@@ -6,7 +6,7 @@ extern crate signal_hook;
 mod buffer;
 mod commands;
 mod context;
-mod dispatcher;
+mod event_loop;
 mod key;
 mod keymap;
 mod read;
@@ -15,7 +15,7 @@ mod window;
 
 use buffer::{Buffer, BufferList};
 use context::{Context, Cursor, GoalColumn};
-use dispatcher::process_user_input;
+use event_loop::process_user_input;
 use keymap::Keymap;
 use term::{with_raw_mode, Term};
 use window::{adjust_scroll, refresh_screen, Window};
