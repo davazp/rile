@@ -44,8 +44,14 @@ impl Window {
     }
 
     fn render_cursor(&self, term: &mut Term, context: &Context) {
+        let base = if context.buffer_list.minibuffer_focused {
+            term.rows - 1
+        } else {
+            0
+        };
+
         term.set_cursor(
-            context.cursor.line - self.scroll_line.get() + 1,
+            base + context.cursor.line - self.scroll_line.get() + 1,
             context.cursor.column + self.get_pad_width(term) + 1,
         );
     }

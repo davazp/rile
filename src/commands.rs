@@ -238,15 +238,19 @@ pub fn kill_emacs(context: &mut Context, _term: &mut Term) -> Result {
 }
 
 pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
-    context.buffer_list.minibuffer.set("M-x ");
+    let prompt = "M-x ";
+    context.buffer_list.minibuffer.set(prompt);
     context.buffer_list.minibuffer_focused = true;
 
-    let key = read::read_key(term, context);
-    context
-        .buffer_list
-        .minibuffer
-        .set(format!("pressed {}", key));
+    context.cursor.line = 0;
+    context.cursor.column = prompt.len();
 
-    context.buffer_list.minibuffer_focused = false;
+    // let key = read::read_key(term, context);
+    // context
+    //     .buffer_list
+    //     .minibuffer
+    //     .set(format!("pressed {}", key));
+
+    // context.buffer_list.minibuffer_focused = false;
     Ok(())
 }

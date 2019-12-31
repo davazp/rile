@@ -10,7 +10,7 @@ pub struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
-            lines: Vec::new(),
+            lines: vec!["".to_string()],
             filename: None,
         }
     }
@@ -70,6 +70,7 @@ impl Buffer {
 
     pub fn truncate(&mut self) {
         self.lines.clear();
+        self.lines.push("".to_string());
     }
 
     pub fn to_string(&self) -> String {
