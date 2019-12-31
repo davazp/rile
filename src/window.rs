@@ -89,7 +89,7 @@ impl Window {
     }
 
     fn render_modeline(&self, term: &mut Term, context: &Context) {
-        let buffer = context.buffer_list.get_current_buffer();
+        let buffer = &context.buffer_list.get_main_buffer();
 
         term.csi("38;5;15m");
         term.csi("48;5;236m");
