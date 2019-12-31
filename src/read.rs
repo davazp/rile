@@ -4,7 +4,8 @@ use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
 use crate::window::{adjust_scroll, refresh_screen};
 
-fn read_single_key(term: &mut Term, context: &Context) -> Key {
+pub fn read_key(term: &mut Term, context: &Context) -> Key {
+    refresh_screen(term, context);
     loop {
         if let Some(key) = read_key_timeout() {
             return key;
@@ -31,7 +32,7 @@ pub fn read_key_binding(
             refresh_screen(term, context);
         }
 
-        let k = read_single_key(term, context);
+        let k = read_key(term, context);
         let item = keymap.lookup(&k);
 
         read.push(k);

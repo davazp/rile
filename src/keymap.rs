@@ -5,7 +5,7 @@ use crate::context::Context;
 use crate::key::Key;
 use crate::term::Term;
 
-pub type CommandHandler = fn(&mut Context, term: &Term) -> commands::Result;
+pub type CommandHandler = fn(&mut Context, term: &mut Term) -> commands::Result;
 
 pub enum Item {
     Command(CommandHandler),
@@ -60,6 +60,8 @@ impl Keymap {
 
         keymap.define_key("C-v", commands::next_screen);
         keymap.define_key("M-v", commands::previous_screen);
+
+        keymap.define_key("M-x", commands::m_x);
 
         c_x.define_key("C-s", commands::save_buffer);
         c_x.define_key("C-c", commands::kill_emacs);

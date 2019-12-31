@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::buffer;
 use crate::context::{Context, Cursor, GoalColumn};
+use crate::read;
 use crate::term::Term;
 
 pub type Result = std::result::Result<(), ()>;
@@ -10,7 +11,7 @@ fn get_line_indentation(line: &str) -> usize {
     line.chars().position(|ch| !ch.is_whitespace()).unwrap_or(0)
 }
 
-pub fn move_beginning_of_line(context: &mut Context, _term: &Term) -> Result {
+pub fn move_beginning_of_line(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let line = buffer.get_line_unchecked(context.cursor.line);
     let indentation = get_line_indentation(line);
@@ -22,14 +23,14 @@ pub fn move_beginning_of_line(context: &mut Context, _term: &Term) -> Result {
     Ok(())
 }
 
-pub fn move_end_of_line(context: &mut Context, _term: &Term) -> Result {
+pub fn move_end_of_line(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let eol = buffer.get_line_unchecked(context.cursor.line).len();
     context.cursor.column = eol;
     Ok(())
 }
 
-pub fn forward_char(context: &mut Context, term: &Term) -> Result {
+pub fn forward_char(context: &mut Context, term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let len = buffer.get_line_unchecked(context.cursor.line).len();
     if context.cursor.column < len {
@@ -41,7 +42,7 @@ pub fn forward_char(context: &mut Context, term: &Term) -> Result {
     Ok(())
 }
 
-pub fn backward_char(context: &mut Context, term: &Term) -> Result {
+pub fn backward_char(context: &mut Context, term: &mut Term) -> Result {
     if context.cursor.column > 0 {
         context.cursor.column -= 1;
     } else {
@@ -58,7 +59,7 @@ fn get_or_set_gaol_column(cursor: &Cursor, goal_column: &mut GoalColumn) -> usiz
     *goal_column.column.get_or_insert(cursor.column)
 }
 
-pub fn next_line(context: &mut Context, _term: &Term) -> Result {
+pub fn next_line(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     if context.cursor.line < buffer.lines_count() - 1 {
         let goal_column = get_or_set_gaol_column(&context.cursor, &mut context.goal_column);
@@ -74,7 +75,7 @@ pub fn next_line(context: &mut Context, _term: &Term) -> Result {
     }
 }
 
-pub fn previous_line(context: &mut Context, _term: &Term) -> Result {
+pub fn previous_line(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     if context.cursor.line > 0 {
         let goal_column = get_or_set_gaol_column(&context.cursor, &mut context.goal_column);
@@ -98,13 +99,13 @@ pub fn insert_char(context: &mut Context, ch: char) {
     context.cursor.column += 1;
 }
 
-pub fn delete_char(context: &mut Context, term: &Term) -> Result {
+pub fn delete_char(context: &mut Context, term: &mut Term) -> Result {
     forward_char(context, term)?;
     delete_backward_char(context, term)?;
     Ok(())
 }
 
-pub fn delete_backward_char(context: &mut Context, _term: &Term) -> Result {
+pub fn delete_backward_char(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer_as_mut();
 
     if context.cursor.column > 0 {
@@ -123,7 +124,7 @@ pub fn delete_backward_char(context: &mut Context, _term: &Term) -> Result {
     Ok(())
 }
 
-pub fn kill_line(context: &mut Context, term: &Term) -> Result {
+pub fn kill_line(context: &mut Context, term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer_as_mut();
     let line = buffer.get_line_mut_unchecked(context.cursor.line);
     if context.cursor.column == line.len() {
@@ -137,7 +138,7 @@ pub fn kill_line(context: &mut Context, term: &Term) -> Result {
     Ok(())
 }
 
-pub fn newline(context: &mut Context, _term: &Term) -> Result {
+pub fn newline(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer_as_mut();
     let line = buffer.get_line_mut_unchecked(context.cursor.line);
     let newline = line.split_off(context.cursor.column);
@@ -147,7 +148,7 @@ pub fn newline(context: &mut Context, _term: &Term) -> Result {
     Ok(())
 }
 
-pub fn indent_line(context: &mut Context, _term: &Term) -> Result {
+pub fn indent_line(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let line = buffer.get_line_unchecked(context.cursor.line);
     let indent = get_line_indentation(line);
@@ -157,7 +158,7 @@ pub fn indent_line(context: &mut Context, _term: &Term) -> Result {
     Ok(())
 }
 
-pub fn save_buffer(context: &mut Context, _term: &Term) -> Result {
+pub fn save_buffer(context: &mut Context, _term: &mut Term) -> Result {
     let buffer_list = &mut context.buffer_list;
 
     let result = {
@@ -183,7 +184,7 @@ pub fn save_buffer(context: &mut Context, _term: &Term) -> Result {
 
 const CONTEXT_LINES: usize = 2;
 
-pub fn next_screen(context: &mut Context, term: &Term) -> Result {
+pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let window = &context.window;
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
@@ -198,7 +199,7 @@ pub fn next_screen(context: &mut Context, term: &Term) -> Result {
     }
 }
 
-pub fn previous_screen(context: &mut Context, term: &Term) -> Result {
+pub fn previous_screen(context: &mut Context, term: &mut Term) -> Result {
     let window = &context.window;
     if window.scroll_line.get() == 0 {
         context.buffer_list.minibuffer.set("Beginning of buffer");
@@ -216,13 +217,13 @@ pub fn previous_screen(context: &mut Context, term: &Term) -> Result {
     Ok(())
 }
 
-pub fn beginning_of_buffer(context: &mut Context, _term: &Term) -> Result {
+pub fn beginning_of_buffer(context: &mut Context, _term: &mut Term) -> Result {
     context.cursor.line = 0;
     context.cursor.column = 0;
     Ok(())
 }
 
-pub fn end_of_buffer(context: &mut Context, _term: &Term) -> Result {
+pub fn end_of_buffer(context: &mut Context, _term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer();
     let linenum = buffer.lines_count() - 1;
     context.cursor.line = linenum;
@@ -231,7 +232,21 @@ pub fn end_of_buffer(context: &mut Context, _term: &Term) -> Result {
     Ok(())
 }
 
-pub fn kill_emacs(context: &mut Context, _term: &Term) -> Result {
+pub fn kill_emacs(context: &mut Context, _term: &mut Term) -> Result {
     context.to_exit = true;
+    Ok(())
+}
+
+pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
+    context.buffer_list.minibuffer.set("M-x ");
+    context.buffer_list.minibuffer_focused = true;
+
+    let key = read::read_key(term, context);
+    context
+        .buffer_list
+        .minibuffer
+        .set(&format!("pressed {}", key));
+
+    context.buffer_list.minibuffer_focused = false;
     Ok(())
 }

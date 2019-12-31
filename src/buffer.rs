@@ -94,7 +94,7 @@ pub enum SaveError {
 }
 
 pub struct BufferList {
-    minibuffer_focused: bool,
+    pub minibuffer_focused: bool,
     main_buffer: Buffer,
     pub minibuffer: Buffer,
 }
