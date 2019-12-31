@@ -58,14 +58,14 @@ impl Buffer {
         self.lines[line].remove(column);
     }
 
-    pub fn set(&mut self, str: &str) {
+    pub fn set<T: AsRef<str>>(&mut self, str: T) {
         // Note that we can't use .lines() here because it would
         // ignore trailing new lines.
         //
         // .split() on the other hand will always be non-empty and it
         // will allow us to recover the original content by adding a
         // \n between each line.
-        self.lines = str.split('\n').map(String::from).collect();
+        self.lines = str.as_ref().split('\n').map(String::from).collect();
     }
 
     pub fn truncate(&mut self) {

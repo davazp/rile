@@ -106,7 +106,7 @@ impl Window {
         // `write_line` to pad the string with spaces.
         write_line(
             term,
-            &format!(
+            format!(
                 "  {}  {} L{}",
                 buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
                 buffer_progress,
@@ -121,7 +121,7 @@ fn render_minibuffer(term: &mut Term, context: &Context) {
     term.csi("m");
     write_line(
         term,
-        &format!("{}", context.buffer_list.minibuffer.to_string()),
+        format!("{}", context.buffer_list.minibuffer.to_string()),
         term.columns,
     );
 }
@@ -144,7 +144,8 @@ pub fn refresh_screen(term: &mut Term, context: &Context) {
     term.flush()
 }
 
-fn write_line(term: &mut Term, str: &str, width: usize) {
+fn write_line<T: AsRef<str>>(term: &mut Term, str: T, width: usize) {
+    let str = str.as_ref();
     assert!(str.len() <= width);
     let padded = format!("{:width$}", str, width = width);
     term.write(&padded);

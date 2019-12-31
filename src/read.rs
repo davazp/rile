@@ -28,7 +28,7 @@ pub fn read_key_binding(
     loop {
         if !read.is_empty() {
             let keys = Key::format_seq(&read) + "-";
-            context.buffer_list.minibuffer.set(&keys);
+            context.buffer_list.minibuffer.set(keys);
             refresh_screen(term, context);
         }
 

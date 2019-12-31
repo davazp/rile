@@ -168,7 +168,7 @@ pub fn save_buffer(context: &mut Context, _term: &mut Term) -> Result {
 
     match result {
         Ok(filename) => {
-            buffer_list.minibuffer.set(&format!("Wrote {}", filename));
+            buffer_list.minibuffer.set(format!("Wrote {}", filename));
             Ok(())
         }
         Err(buffer::SaveError::NoFile) => {
@@ -245,7 +245,7 @@ pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
     context
         .buffer_list
         .minibuffer
-        .set(&format!("pressed {}", key));
+        .set(format!("pressed {}", key));
 
     context.buffer_list.minibuffer_focused = false;
     Ok(())

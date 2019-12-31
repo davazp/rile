@@ -31,7 +31,7 @@ pub fn process_user_input(term: &mut Term, context: &mut Context) {
             if let Some(ch) = is_self_insert(&keys) {
                 commands::insert_char(context, ch);
             } else {
-                minibuffer.set(&format!("{} is undefined", Key::format_seq(&keys)));
+                minibuffer.set(format!("{} is undefined", Key::format_seq(&keys)));
             }
         }
     }
