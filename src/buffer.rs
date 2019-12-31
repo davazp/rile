@@ -75,4 +75,56 @@ impl Buffer {
     pub fn to_string(&self) -> String {
         self.lines.join("\n")
     }
+
+    pub fn save(&self) -> Result<String, SaveError> {
+        let contents = self.to_string();
+        if let Some(filename) = &self.filename {
+            fs::write(filename, contents)
+                .map(|_| filename.clone())
+                .map_err(SaveError::IoError)
+        } else {
+            Err(SaveError::NoFile)
+        }
+    }
+}
+
+pub enum SaveError {
+    NoFile,
+    IoError(std::io::Error),
+}
+
+pub struct BufferList {
+    minibuffer_focused: bool,
+    main_buffer: Buffer,
+    pub minibuffer: Buffer,
+}
+
+impl BufferList {
+    pub fn new(main: Buffer) -> BufferList {
+        BufferList {
+            minibuffer_focused: false,
+            main_buffer: main,
+            minibuffer: Buffer::new(),
+        }
+    }
+
+    pub fn get_current_buffer_as_mut(&mut self) -> &mut Buffer {
+        if self.minibuffer_focused {
+            &mut self.minibuffer
+        } else {
+            &mut self.main_buffer
+        }
+    }
+
+    pub fn get_current_buffer(&self) -> &Buffer {
+        if self.minibuffer_focused {
+            &self.minibuffer
+        } else {
+            &self.main_buffer
+        }
+    }
+
+    pub fn get_main_buffer(&self) -> &Buffer {
+        &self.main_buffer
+    }
 }

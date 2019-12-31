@@ -60,7 +60,7 @@ impl Window {
 
         let offset = self.get_pad_width(term);
 
-        let buffer = &context.current_buffer;
+        let buffer = context.buffer_list.get_main_buffer();
 
         // Main window
         for row in 0..window_lines {
@@ -83,6 +83,8 @@ impl Window {
     }
 
     fn render_modeline(&self, term: &mut Term, context: &Context) {
+        let buffer = context.buffer_list.get_current_buffer();
+
         term.csi("38;5;15m");
         term.csi("48;5;236m");
 
@@ -90,13 +92,12 @@ impl Window {
 
         let buffer_progress = if scroll_line == 0 {
             "Top".to_string()
-        } else if scroll_line + self.get_window_lines(term) >= context.current_buffer.lines_count()
-        {
+        } else if scroll_line + self.get_window_lines(term) >= buffer.lines_count() {
             "Bot".to_string()
         } else {
             format!(
                 "{}%",
-                100 * (context.cursor.line + 1) / context.current_buffer.lines_count()
+                100 * (context.cursor.line + 1) / buffer.lines_count()
             )
         };
 
@@ -107,11 +108,7 @@ impl Window {
             term,
             &format!(
                 "  {}  {} L{}",
-                context
-                    .current_buffer
-                    .filename
-                    .as_ref()
-                    .unwrap_or(&"*scratch*".to_string()),
+                buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
                 buffer_progress,
                 context.cursor.line + 1
             ),
@@ -124,7 +121,7 @@ fn render_minibuffer(term: &mut Term, context: &Context) {
     term.csi("m");
     write_line(
         term,
-        &format!("{}", context.minibuffer.to_string()),
+        &format!("{}", context.buffer_list.minibuffer.to_string()),
         term.columns,
     );
 }

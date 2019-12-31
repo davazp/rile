@@ -12,8 +12,8 @@ mod keymap;
 mod term;
 mod window;
 
-use buffer::Buffer;
-use context::{Context, Cursor};
+use buffer::{Buffer, BufferList};
+use context::{Context, Cursor, GoalColumn};
 use dispatcher::process_user_input;
 use keymap::Keymap;
 use term::{with_raw_mode, Term};
@@ -50,15 +50,13 @@ fn main() {
     let file_arg = matches.value_of("FILE");
 
     let mut context = Context {
-        goal_column: None,
         cursor: Cursor { line: 0, column: 0 },
 
-        minibuffer: Buffer::new(),
-        current_buffer: if let Some(filename) = file_arg {
+        buffer_list: BufferList::new(if let Some(filename) = file_arg {
             Buffer::from_file(filename)
         } else {
             Buffer::from_string("")
-        },
+        }),
 
         keymap: Keymap::defaults(),
 
@@ -67,7 +65,11 @@ fn main() {
         was_resized: Arc::new(AtomicBool::new(false)),
 
         to_exit: false,
-        to_preserve_goal_column: false,
+
+        goal_column: GoalColumn {
+            to_preserve: false,
+            column: None,
+        },
     };
 
     signal_hook::flag::register(signal_hook::SIGWINCH, context.was_resized.clone()).unwrap();
@@ -79,15 +81,15 @@ fn main() {
     refresh_screen(&mut term, &context);
 
     with_raw_mode(|| loop {
-        context.to_preserve_goal_column = false;
+        context.goal_column.to_preserve = false;
 
         process_user_input(&mut term, &mut context);
 
         adjust_scroll(&mut term, &mut context);
         refresh_screen(&mut term, &context);
 
-        if !context.to_preserve_goal_column {
-            context.goal_column = None;
+        if !context.goal_column.to_preserve {
+            context.goal_column.column = None;
         }
 
         if context.to_exit {
