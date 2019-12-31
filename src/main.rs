@@ -9,6 +9,7 @@ mod context;
 mod dispatcher;
 mod key;
 mod keymap;
+mod read;
 mod term;
 mod window;
 
