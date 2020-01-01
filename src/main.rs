@@ -15,7 +15,7 @@ mod term;
 mod window;
 
 use buffer::{Buffer, BufferList};
-use context::{Context, Cursor, GoalColumn};
+use context::{Context, GoalColumn};
 use event_loop::{process_user_input, EventLoopState};
 use term::{with_raw_mode, Term};
 use window::{adjust_scroll, refresh_screen, Window};
@@ -51,8 +51,6 @@ fn main() {
     let file_arg = matches.value_of("FILE");
 
     let mut context = Context {
-        cursor: Cursor { line: 0, column: 0 },
-
         buffer_list: BufferList::new(if let Some(filename) = file_arg {
             Buffer::from_file(filename)
         } else {

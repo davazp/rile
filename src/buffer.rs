@@ -2,10 +2,26 @@ use crate::keymap::Keymap;
 use crate::minibuffer;
 use std::fs;
 
+/// A cursor into a buffer content
+pub struct Cursor {
+    pub line: usize,
+    pub column: usize,
+}
+
+impl Cursor {
+    fn new() -> Cursor {
+        Cursor { line: 0, column: 0 }
+    }
+}
+
 /// A buffer contains text that can be edited.
 pub struct Buffer {
     pub keymap: Keymap,
     pub filename: Option<String>,
+
+    /// The cursor should always be a valid reference to the buffer.
+    pub cursor: Cursor,
+
     /// All lines of this buffer.
     lines: Vec<String>,
 }
@@ -13,6 +29,7 @@ pub struct Buffer {
 impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
+            cursor: Cursor::new(),
             lines: vec!["".to_string()],
             filename: None,
             keymap: Keymap::defaults(),
@@ -71,6 +88,8 @@ impl Buffer {
         // will allow us to recover the original content by adding a
         // \n between each line.
         self.lines = str.as_ref().split('\n').map(String::from).collect();
+        self.cursor.line = 0;
+        self.cursor.column = 0;
     }
 
     pub fn truncate(&mut self) {

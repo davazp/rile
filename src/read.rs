@@ -52,8 +52,9 @@ pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Resu
     context.buffer_list.minibuffer.set(prompt);
     context.buffer_list.minibuffer_focused = true;
 
-    context.cursor.line = 0;
-    context.cursor.column = prompt.len();
+    let buffer = context.buffer_list.get_current_buffer_as_mut();
+    buffer.cursor.line = 0;
+    buffer.cursor.column = prompt.len();
 
     let success = event_loop(term, context);
 

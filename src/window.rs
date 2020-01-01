@@ -7,13 +7,14 @@ use crate::term::{ErasePart, Term};
 /// Adjust the scroll level so the cursor is on the screen.
 pub fn adjust_scroll(term: &Term, context: &Context) {
     let window = &context.window;
-    if context.cursor.line < window.scroll_line.get() {
-        window.scroll_line.set(context.cursor.line);
+    let buffer = context.buffer_list.get_current_buffer();
+    if buffer.cursor.line < window.scroll_line.get() {
+        window.scroll_line.set(buffer.cursor.line);
     }
-    if context.cursor.line > window.scroll_line.get() + window.get_window_lines(term) - 1 {
+    if buffer.cursor.line > window.scroll_line.get() + window.get_window_lines(term) - 1 {
         window
             .scroll_line
-            .set(context.cursor.line - (window.get_window_lines(term) - 1));
+            .set(buffer.cursor.line - (window.get_window_lines(term) - 1));
     }
 }
 
@@ -50,9 +51,11 @@ impl Window {
             0
         };
 
+        let buffer = context.buffer_list.get_current_buffer();
+
         term.set_cursor(
-            base + context.cursor.line - self.scroll_line.get() + 1,
-            context.cursor.column + self.get_pad_width(term) + 1,
+            base + buffer.cursor.line - self.scroll_line.get() + 1,
+            buffer.cursor.column + self.get_pad_width(term) + 1,
         );
     }
 
@@ -101,10 +104,7 @@ impl Window {
         } else if scroll_line + self.get_window_lines(term) >= buffer.lines_count() {
             "Bot".to_string()
         } else {
-            format!(
-                "{}%",
-                100 * (context.cursor.line + 1) / buffer.lines_count()
-            )
+            format!("{}%", 100 * (buffer.cursor.line + 1) / buffer.lines_count())
         };
 
         // On MacOsX's terminal, when you erase a line it won't fill the
@@ -116,7 +116,7 @@ impl Window {
                 "  {}  {} L{}",
                 buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
                 buffer_progress,
-                context.cursor.line + 1
+                buffer.cursor.line + 1
             ),
             term.columns,
         );

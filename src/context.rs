@@ -5,12 +5,6 @@ use crate::buffer::BufferList;
 use crate::event_loop;
 use crate::window::Window;
 
-/// A cursor into a buffer content
-pub struct Cursor {
-    pub line: usize,
-    pub column: usize,
-}
-
 pub struct GoalColumn {
     pub column: Option<usize>,
     pub to_preserve: bool,
@@ -18,7 +12,6 @@ pub struct GoalColumn {
 
 /// The state of the editor.
 pub struct Context {
-    pub cursor: Cursor,
     pub buffer_list: BufferList,
 
     pub window: Window,
