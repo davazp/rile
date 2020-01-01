@@ -170,5 +170,9 @@ fn write_line<T: AsRef<str>>(term: &mut term::Term, str: T, width: usize) {
 pub fn ding(term: &mut term::Term, context: &Context) {
     render_screen(term, context, true);
     thread::sleep(Duration::from_millis(100));
+    // Discard pending output. This avoids the situation where keeping
+    // C-g press will overwhelm the event loop and hang the system
+    // compmletely until completed.
+    term::discard_input_buffer();
     render_screen(term, context, false);
 }

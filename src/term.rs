@@ -210,3 +210,8 @@ pub fn reconciliate_term_size(term: &mut Term, was_resized: &AtomicBool) -> bool
         false
     }
 }
+
+/// Discard all user inputs that have not being read yet.
+pub fn discard_input_buffer() {
+    let _ = termios::tcflush(libc::STDIN_FILENO, termios::FlushArg::TCIFLUSH);
+}
