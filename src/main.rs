@@ -3,22 +3,11 @@
 
 extern crate signal_hook;
 
-mod buffer;
-mod commands;
-mod context;
-mod event_loop;
-mod key;
-mod keymap;
-mod minibuffer;
-mod read;
-mod term;
-mod window;
-
-use buffer::{Buffer, BufferList};
-use context::{Context, GoalColumn};
-use event_loop::{process_user_input, EventLoopState};
-use term::{with_raw_mode, Term};
-use window::{adjust_scroll, refresh_screen, Window};
+use sted::buffer::{Buffer, BufferList};
+use sted::context::{Context, GoalColumn};
+use sted::event_loop::{process_user_input, EventLoopState};
+use sted::term::{with_raw_mode, Term};
+use sted::window::{adjust_scroll, refresh_screen, Window};
 
 use std::env;
 use std::sync::atomic::AtomicBool;
