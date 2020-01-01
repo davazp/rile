@@ -58,13 +58,14 @@ pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Resu
     let success = event_loop(term, context);
 
     let result = if success {
-        Ok(context.buffer_list.minibuffer.to_string())
+        let result = Ok(context.buffer_list.minibuffer.to_string());
+        context.buffer_list.minibuffer.truncate();
+        result
     } else {
         Err(())
     };
 
     context.buffer_list.minibuffer_focused = false;
-    context.buffer_list.minibuffer.truncate();
 
     result
 }
