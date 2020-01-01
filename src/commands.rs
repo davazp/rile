@@ -252,6 +252,7 @@ pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
 }
 
 pub fn keyboard_quit(context: &mut Context, _term: &mut Term) -> Result {
+    context.buffer_list.minibuffer.set("Quit");
     context.event_loop.complete(Err(()));
     Ok(())
 }
