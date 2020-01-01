@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::commands;
 use crate::term::Term;
@@ -14,28 +16,28 @@ pub enum Item {
 
 #[derive(Clone)]
 pub struct Keymap {
-    inner: HashMap<Key, Item>,
+    inner: Rc<RefCell<HashMap<Key, Item>>>,
 }
 
 impl Keymap {
     pub fn new() -> Keymap {
         Keymap {
-            inner: HashMap::new(),
+            inner: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 
     pub fn define_key(&mut self, keyspec: &str, f: CommandHandler) {
         let key = Key::parse_unchecked(keyspec);
-        self.inner.insert(key, Item::Command(f));
+        self.inner.borrow_mut().insert(key, Item::Command(f));
     }
 
     pub fn define_keymap(&mut self, keyspec: &str, keymap: Keymap) {
         let key = Key::parse_unchecked(keyspec);
-        self.inner.insert(key, Item::Keymap(keymap));
+        self.inner.borrow_mut().insert(key, Item::Keymap(keymap));
     }
 
-    pub fn lookup(&self, key: &Key) -> Option<&Item> {
-        self.inner.get(key)
+    pub fn lookup(&self, key: &Key) -> Option<Item> {
+        self.inner.borrow().get(key).map(|item| item.clone())
     }
 
     pub fn defaults() -> Keymap {

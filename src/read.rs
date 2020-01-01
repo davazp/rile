@@ -23,12 +23,12 @@ pub fn read_key_binding(
     context: &mut Context,
 ) -> Result<CommandHandler, Vec<Key>> {
     let mut read = vec![];
-    let mut keymap = &context.buffer_list.get_current_buffer().keymap;
+    let mut keymap = context.buffer_list.get_current_buffer().keymap.clone();
 
     loop {
         if !read.is_empty() {
-            // let keys = Key::format_seq(&read) + "-";
-            // context.buffer_list.minibuffer.set(keys);
+            let keys = Key::format_seq(&read) + "-";
+            context.buffer_list.minibuffer.set(keys);
             refresh_screen(term, context);
         }
 
@@ -38,7 +38,7 @@ pub fn read_key_binding(
         read.push(k);
 
         match item {
-            Some(Item::Command(cmd)) => return Ok(*cmd),
+            Some(Item::Command(cmd)) => break Ok(cmd),
             Some(Item::Keymap(km)) => {
                 keymap = km;
             }
