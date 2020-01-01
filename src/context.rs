@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::buffer::BufferList;
 use crate::event_loop;
-use crate::window::Window;
+use crate::Window;
 
 pub struct GoalColumn {
     pub column: Option<usize>,

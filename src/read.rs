@@ -1,9 +1,8 @@
-use crate::context::Context;
 use crate::event_loop::event_loop;
-use crate::key::Key;
 use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
 use crate::window::{adjust_scroll, refresh_screen};
+use crate::{Context, Key};
 
 pub fn read_key(term: &mut Term, context: &Context) -> Key {
     refresh_screen(term, context);

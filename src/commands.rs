@@ -1,10 +1,10 @@
 use std::cmp;
 
 use crate::buffer;
-use crate::buffer::Cursor;
-use crate::context::{Context, GoalColumn};
+use crate::context;
 use crate::read;
 use crate::term::Term;
+use crate::{Context, Cursor};
 
 pub type Result = std::result::Result<(), ()>;
 
@@ -54,7 +54,7 @@ pub fn backward_char(context: &mut Context, term: &mut Term) -> Result {
     Ok(())
 }
 
-fn get_or_set_gaol_column(cursor: &Cursor, goal_column: &mut GoalColumn) -> usize {
+fn get_or_set_gaol_column(cursor: &Cursor, goal_column: &mut context::GoalColumn) -> usize {
     // We set `to_preserve` to ensure the goal_column is
     // not lost for the next command.
     goal_column.to_preserve = true;

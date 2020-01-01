@@ -1,11 +1,11 @@
 use std::cell::Cell;
 use std::cmp;
 
-use crate::context::Context;
-use crate::term::{ErasePart, Term};
+use crate::term;
+use crate::Context;
 
 /// Adjust the scroll level so the cursor is on the screen.
-pub fn adjust_scroll(term: &Term, context: &Context) {
+pub fn adjust_scroll(term: &term::Term, context: &Context) {
     let window = &context.window;
     let buffer = context.buffer_list.get_current_buffer();
     if buffer.cursor.line < window.scroll_line.get() {
@@ -30,11 +30,11 @@ impl Window {
         }
     }
 
-    pub fn get_window_lines(&self, term: &Term) -> usize {
+    pub fn get_window_lines(&self, term: &term::Term) -> usize {
         term.rows - 2
     }
 
-    fn get_pad_width(&self, term: &Term) -> usize {
+    fn get_pad_width(&self, term: &term::Term) -> usize {
         if self.show_lines {
             let last_linenum_width =
                 format!("{}", self.scroll_line.get() + self.get_window_lines(term)).len();
@@ -44,7 +44,7 @@ impl Window {
         }
     }
 
-    fn render_cursor(&self, term: &mut Term, context: &Context) {
+    fn render_cursor(&self, term: &mut term::Term, context: &Context) {
         let base = if context.buffer_list.minibuffer_focused {
             term.rows - 1
         } else {
@@ -59,7 +59,7 @@ impl Window {
         );
     }
 
-    fn render_window(&self, term: &mut Term, context: &Context) {
+    fn render_window(&self, term: &mut term::Term, context: &Context) {
         let offset = self.get_pad_width(term);
         let window_columns = term.columns - offset;
 
@@ -85,13 +85,13 @@ impl Window {
                 term.write(&line[..cmp::min(line.len(), window_columns)]);
             }
 
-            term.erase_line(ErasePart::ToEnd);
+            term.erase_line(term::ErasePart::ToEnd);
             term.write("\r\n");
         }
         term.csi("m");
     }
 
-    fn render_modeline(&self, term: &mut Term, context: &Context) {
+    fn render_modeline(&self, term: &mut term::Term, context: &Context) {
         let buffer = &context.buffer_list.get_main_buffer();
 
         term.csi("38;5;15m");
@@ -123,7 +123,7 @@ impl Window {
     }
 }
 
-fn render_minibuffer(term: &mut Term, context: &Context) {
+fn render_minibuffer(term: &mut term::Term, context: &Context) {
     term.csi("m");
     write_line(
         term,
@@ -135,7 +135,7 @@ fn render_minibuffer(term: &mut Term, context: &Context) {
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-pub fn refresh_screen(term: &mut Term, context: &Context) {
+pub fn refresh_screen(term: &mut term::Term, context: &Context) {
     let win = &context.window;
 
     term.hide_cursor();
@@ -150,7 +150,7 @@ pub fn refresh_screen(term: &mut Term, context: &Context) {
     term.flush()
 }
 
-fn write_line<T: AsRef<str>>(term: &mut Term, str: T, width: usize) {
+fn write_line<T: AsRef<str>>(term: &mut term::Term, str: T, width: usize) {
     let str = str.as_ref();
     assert!(str.len() <= width);
     let padded = format!("{:width$}", str, width = width);

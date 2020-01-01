@@ -5,7 +5,7 @@ use std::env;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::key::Key;
+use crate::Key;
 
 /// Execute a function with the terminal in raw mode.
 ///

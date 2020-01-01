@@ -1,6 +1,6 @@
-use crate::keymap::Keymap;
-use crate::minibuffer;
 use std::fs;
+
+use crate::{minibuffer, Keymap};
 
 /// A cursor into a buffer content
 pub struct Cursor {

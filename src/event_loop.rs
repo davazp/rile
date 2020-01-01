@@ -1,8 +1,7 @@
 use crate::commands;
-use crate::context::Context;
-use crate::key::Key;
 use crate::read;
 use crate::term::Term;
+use crate::{Context, Key};
 
 type Result = std::result::Result<(), ()>;
 

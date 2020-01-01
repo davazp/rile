@@ -1,10 +1,7 @@
-use crate::buffer::Buffer;
-use crate::commands::Result;
-use crate::context::Context;
-use crate::keymap::Keymap;
 use crate::term::Term;
+use crate::{commands, Buffer, Context, Keymap};
 
-pub fn minibuffer_complete(context: &mut Context, _term: &mut Term) -> Result {
+pub fn minibuffer_complete(context: &mut Context, _term: &mut Term) -> commands::Result {
     context.event_loop.complete(Ok(()));
     Ok(())
 }

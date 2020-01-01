@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use crate::commands;
-use crate::context::Context;
-use crate::key::Key;
 use crate::term::Term;
+use crate::{Context, Key};
 
 pub type CommandHandler = fn(&mut Context, term: &mut Term) -> commands::Result;
 

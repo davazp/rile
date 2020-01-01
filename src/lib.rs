@@ -10,6 +10,8 @@ pub mod window;
 
 pub use buffer::{Buffer, Cursor};
 pub use context::Context;
+pub use key::Key;
+pub use keymap::Keymap;
 pub use window::Window;
 
 pub mod commands;
