@@ -4,6 +4,7 @@ use crate::buffer;
 use crate::context;
 use crate::read;
 use crate::term::Term;
+use crate::window;
 use crate::{Context, Cursor};
 
 pub type Result = std::result::Result<(), ()>;
@@ -250,8 +251,9 @@ pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
     Ok(())
 }
 
-pub fn keyboard_quit(context: &mut Context, _term: &mut Term) -> Result {
+pub fn keyboard_quit(context: &mut Context, term: &mut Term) -> Result {
     context.buffer_list.minibuffer.set("Quit");
+    window::ding(term, context);
     context.event_loop.complete(Err(()));
     Ok(())
 }

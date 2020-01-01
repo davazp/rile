@@ -1,5 +1,7 @@
 use std::cell::Cell;
 use std::cmp;
+use std::thread;
+use std::time::Duration;
 
 use crate::term;
 use crate::Context;
@@ -123,8 +125,12 @@ impl Window {
     }
 }
 
-fn render_minibuffer(term: &mut term::Term, context: &Context) {
-    term.csi("m");
+fn render_minibuffer(term: &mut term::Term, context: &Context, flashed: bool) {
+    if flashed {
+        term.csi(";7m");
+    } else {
+        term.csi("m");
+    }
     write_line(
         term,
         format!("{}", context.buffer_list.minibuffer.to_string()),
@@ -132,17 +138,14 @@ fn render_minibuffer(term: &mut term::Term, context: &Context) {
     );
 }
 
-/// Refresh the screen.
-///
-/// Ensure the terminal reflects the latest state of the editor.
-pub fn refresh_screen(term: &mut term::Term, context: &Context) {
+fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
     let win = &context.window;
 
     term.hide_cursor();
 
     win.render_window(term, context);
     win.render_modeline(term, context);
-    render_minibuffer(term, context);
+    render_minibuffer(term, context, flashed);
 
     win.render_cursor(term, context);
 
@@ -150,9 +153,22 @@ pub fn refresh_screen(term: &mut term::Term, context: &Context) {
     term.flush()
 }
 
+/// Refresh the screen.
+///
+/// Ensure the terminal reflects the latest state of the editor.
+pub fn refresh_screen(term: &mut term::Term, context: &Context) {
+    render_screen(term, context, false);
+}
+
 fn write_line<T: AsRef<str>>(term: &mut term::Term, str: T, width: usize) {
     let str = str.as_ref();
     assert!(str.len() <= width);
     let padded = format!("{:width$}", str, width = width);
     term.write(&padded);
+}
+
+pub fn ding(term: &mut term::Term, context: &Context) {
+    render_screen(term, context, true);
+    thread::sleep(Duration::from_millis(100));
+    render_screen(term, context, false);
 }
