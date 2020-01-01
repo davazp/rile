@@ -60,19 +60,20 @@ fn main() {
 
     signal_hook::flag::register(signal_hook::SIGWINCH, context.was_resized.clone()).unwrap();
 
-    let mut term = Term::new();
+    let term = &mut Term::new();
+    let context = &mut context;
 
     term.enable_alternative_screen_buffer();
 
-    refresh_screen(&mut term, &context);
+    refresh_screen(term, context);
 
     with_raw_mode(|| loop {
         context.goal_column.to_preserve = false;
 
-        process_user_input(&mut term, &mut context);
+        process_user_input(term, context);
 
-        adjust_scroll(&mut term, &mut context);
-        refresh_screen(&mut term, &context);
+        adjust_scroll(term, context);
+        refresh_screen(term, context);
 
         if !context.goal_column.to_preserve {
             context.goal_column.column = None;
