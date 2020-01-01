@@ -244,8 +244,8 @@ pub fn kill_emacs(context: &mut Context, _term: &mut Term) -> Result {
     Ok(())
 }
 
-pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
-    if let Ok(str) = read::read_string(term, context, "M-x ") {
+pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
+    if let Ok(str) = read::read_string(term, context, "Search: ") {
         context.buffer_list.get_current_buffer_as_mut().set(str);
     }
     Ok(())

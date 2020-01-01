@@ -64,7 +64,7 @@ impl Keymap {
         keymap.define_key("M-v", commands::previous_screen);
 
         keymap.define_key("C-g", commands::keyboard_quit);
-        keymap.define_key("M-x", commands::m_x);
+        keymap.define_key("C-s", commands::isearch_forward);
 
         c_x.define_key("C-s", commands::save_buffer);
         c_x.define_key("C-c", commands::kill_emacs);
