@@ -3,7 +3,8 @@
 
 extern crate signal_hook;
 
-use sted::buffer::{Buffer, BufferList};
+use sted::buffer::Buffer;
+use sted::buffer_list::BufferList;
 use sted::context::{Context, GoalColumn};
 use sted::event_loop::{event_loop, EventLoopState};
 use sted::term::{with_raw_mode, Term};

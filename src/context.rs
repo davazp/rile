@@ -1,7 +1,8 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use crate::buffer::BufferList;
+use crate::buffer_list::BufferList;
+
 use crate::event_loop;
 use crate::Window;
 
