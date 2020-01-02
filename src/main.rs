@@ -7,7 +7,7 @@ use sted::buffer::{Buffer, BufferList};
 use sted::context::{Context, GoalColumn};
 use sted::event_loop::{process_user_input, EventLoopState};
 use sted::term::{with_raw_mode, Term};
-use sted::window::{adjust_scroll, refresh_screen, Window};
+use sted::window::{refresh_screen, Window};
 
 use std::env;
 use std::sync::atomic::AtomicBool;
@@ -71,9 +71,6 @@ fn main() {
         context.goal_column.to_preserve = false;
 
         process_user_input(term, context);
-
-        adjust_scroll(term, context);
-        refresh_screen(term, context);
 
         if !context.goal_column.to_preserve {
             context.goal_column.column = None;

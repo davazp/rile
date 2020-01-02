@@ -1,6 +1,7 @@
 use crate::commands;
 use crate::read;
 use crate::term::Term;
+use crate::window::adjust_scroll;
 use crate::{Context, Key};
 
 type Result = std::result::Result<(), ()>;
@@ -75,6 +76,9 @@ pub fn event_loop(term: &mut Term, context: &mut Context) -> bool {
     let status = loop {
         context.event_loop.result = None;
         process_user_input(term, context);
+
+        adjust_scroll(term, context);
+
         if let Some(result) = context.event_loop.result {
             break result;
         }
