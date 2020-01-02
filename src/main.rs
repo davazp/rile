@@ -5,7 +5,7 @@ extern crate signal_hook;
 
 use sted::buffer::{Buffer, BufferList};
 use sted::context::{Context, GoalColumn};
-use sted::event_loop::{process_user_input, EventLoopState};
+use sted::event_loop::{event_loop, EventLoopState};
 use sted::term::{with_raw_mode, Term};
 use sted::window::{refresh_screen, Window};
 
@@ -67,18 +67,8 @@ fn main() {
 
     refresh_screen(term, context);
 
-    with_raw_mode(|| loop {
-        context.goal_column.to_preserve = false;
-
-        process_user_input(term, context);
-
-        if !context.goal_column.to_preserve {
-            context.goal_column.column = None;
-        }
-
-        if context.event_loop.is_exit_successfully() {
-            break;
-        }
+    with_raw_mode(|| {
+        event_loop(term, context);
     })
     .expect("Could not initialize the terminal to run in raw mode.");
 

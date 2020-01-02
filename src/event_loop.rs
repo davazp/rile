@@ -40,7 +40,7 @@ fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
 }
 
 /// Process user input.
-pub fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
+fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     let cmd = read::read_key_binding(term, context);
     let minibuffer = &mut context.buffer_list.minibuffer;
 
@@ -75,7 +75,13 @@ pub fn event_loop(term: &mut Term, context: &mut Context) -> bool {
 
     let status = loop {
         context.event_loop.result = None;
+        context.goal_column.to_preserve = false;
+
         process_user_input(term, context);
+
+        if !context.goal_column.to_preserve {
+            context.goal_column.column = None;
+        }
 
         adjust_scroll(term, context);
 
