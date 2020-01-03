@@ -40,7 +40,7 @@ pub fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
 
     // Be okay with read() returning 0 bytes read
     termios.control_chars[termios::SpecialCharacterIndices::VMIN as usize] = 0;
-    // termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
+    termios.control_chars[termios::SpecialCharacterIndices::VTIME as usize] = 1;
 
     termios::tcsetattr(libc::STDIN_FILENO, termios::SetArg::TCSAFLUSH, &termios)?;
 
