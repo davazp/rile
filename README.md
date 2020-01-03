@@ -1,4 +1,3 @@
-# sted
+# rile
 
-`sted` is an educational text editor written in Rust and extensible
-with a custom concatenative language.
+An educational Emacs-based text editor written in Rust.

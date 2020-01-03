@@ -1,14 +1,14 @@
-//! sted is a simple editor written in Rust.
+//! rile is a simple editor written in Rust.
 //!
 
 extern crate signal_hook;
 
-use sted::buffer::Buffer;
-use sted::buffer_list::BufferList;
-use sted::context::{Context, GoalColumn};
-use sted::event_loop::{event_loop, EventLoopState};
-use sted::term::{with_raw_mode, Term};
-use sted::window::{refresh_screen, Window};
+use rile::buffer::Buffer;
+use rile::buffer_list::BufferList;
+use rile::context::{Context, GoalColumn};
+use rile::event_loop::{event_loop, EventLoopState};
+use rile::term::{with_raw_mode, Term};
+use rile::window::{refresh_screen, Window};
 
 use std::env;
 use std::sync::atomic::AtomicBool;
