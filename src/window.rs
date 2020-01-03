@@ -176,3 +176,8 @@ pub fn ding(term: &mut term::Term, context: &Context) {
     term::discard_input_buffer();
     render_screen(term, context, false);
 }
+
+/// Show a message in the minibuffer.
+pub fn message<S: AsRef<str>>(context: &mut Context, str: S) {
+    context.buffer_list.minibuffer.set(str);
+}

@@ -4,7 +4,7 @@ use crate::buffer;
 use crate::context;
 use crate::read;
 use crate::term::Term;
-use crate::window;
+use crate::window::{self, message};
 use crate::{Context, Cursor};
 
 pub type Result = std::result::Result<(), ()>;
@@ -73,7 +73,7 @@ pub fn next_line(context: &mut Context, _term: &mut Term) -> Result {
         );
         Ok(())
     } else {
-        context.buffer_list.minibuffer.set("End of buffer");
+        message(context, "End of buffer");
         Err(())
     }
 }
@@ -89,7 +89,7 @@ pub fn previous_line(context: &mut Context, _term: &mut Term) -> Result {
         );
         Ok(())
     } else {
-        context.buffer_list.minibuffer.set("Beginning of buffer");
+        message(context, "Beginning of buffer");
         Err(())
     }
 }
@@ -173,15 +173,15 @@ pub fn save_buffer(context: &mut Context, _term: &mut Term) -> Result {
 
     match result {
         Ok(filename) => {
-            buffer_list.minibuffer.set(format!("Wrote {}", filename));
+            message(context, format!("Wrote {}", filename));
             Ok(())
         }
         Err(buffer::SaveError::NoFile) => {
-            buffer_list.minibuffer.set("No file");
+            message(context, "No file");
             Err(())
         }
         Err(buffer::SaveError::IoError(_)) => {
-            buffer_list.minibuffer.set("Could not save file");
+            message(context, "Could not save file");
             Err(())
         }
     }
@@ -199,7 +199,7 @@ pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
         buffer.cursor.line = target;
         Ok(())
     } else {
-        context.buffer_list.minibuffer.set("End of buffer");
+        message(context, "End of buffer");
         Err(())
     }
 }
@@ -209,7 +209,7 @@ pub fn previous_screen(context: &mut Context, term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer_as_mut();
 
     if window.scroll_line.get() == 0 {
-        context.buffer_list.minibuffer.set("Beginning of buffer");
+        message(context, "Beginning of buffer");
         return Err(());
     }
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
@@ -252,7 +252,7 @@ pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
 }
 
 pub fn keyboard_quit(context: &mut Context, term: &mut Term) -> Result {
-    context.buffer_list.minibuffer.set("Quit");
+    message(context, "Quit");
     window::ding(term, context);
     context.event_loop.complete(Err(()));
     Ok(())

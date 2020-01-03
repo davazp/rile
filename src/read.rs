@@ -1,7 +1,7 @@
 use crate::event_loop::event_loop;
 use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
-use crate::window::{adjust_scroll, refresh_screen};
+use crate::window::{adjust_scroll, message, refresh_screen};
 use crate::{Context, Key};
 
 pub fn read_key(term: &mut Term, context: &Context) -> Key {
@@ -28,7 +28,7 @@ pub fn read_key_binding(
     loop {
         if !read.is_empty() {
             let keys = Key::format_seq(&read) + "-";
-            context.buffer_list.minibuffer.set(keys);
+            message(context, keys);
             refresh_screen(term, context);
         }
 
