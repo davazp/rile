@@ -240,7 +240,7 @@ pub fn end_of_buffer(context: &mut Context, _term: &mut Term) -> Result {
     Ok(())
 }
 
-pub fn kill_emacs(context: &mut Context, _term: &mut Term) -> Result {
+pub fn kill_rile(context: &mut Context, _term: &mut Term) -> Result {
     context.event_loop.complete(Ok(()));
     Ok(())
 }

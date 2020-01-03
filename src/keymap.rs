@@ -68,7 +68,7 @@ impl Keymap {
         keymap.define_key("C-s", commands::isearch_forward);
 
         c_x.define_key("C-s", commands::save_buffer);
-        c_x.define_key("C-c", commands::kill_emacs);
+        c_x.define_key("C-c", commands::kill_rile);
         keymap.define_keymap("C-x", c_x);
 
         keymap
