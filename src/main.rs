@@ -68,10 +68,8 @@ fn main() {
 
     refresh_screen(term, context);
 
-    with_raw_mode(|| {
-        event_loop(term, context);
-    })
-    .expect("Could not initialize the terminal to run in raw mode.");
+    with_raw_mode(|| while !event_loop(term, context) {})
+        .expect("Could not initialize the terminal to run in raw mode.");
 
     term.disable_alternative_screen_buffer();
     term.show_cursor();
