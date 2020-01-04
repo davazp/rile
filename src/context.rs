@@ -15,7 +15,8 @@ pub struct GoalColumn {
 pub struct Context {
     pub buffer_list: BufferList,
 
-    pub window: Window,
+    pub main_window: Window,
+    pub minibuffer_window: Window,
 
     pub event_loop: event_loop::EventLoopState,
 

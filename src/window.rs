@@ -3,12 +3,13 @@ use std::cmp;
 use std::thread;
 use std::time::Duration;
 
+use crate::buffer_list::BufferRef;
 use crate::term;
 use crate::Context;
 
 /// Adjust the scroll level so the cursor is on the screen.
 pub fn adjust_scroll(term: &term::Term, context: &Context) {
-    let window = &context.window;
+    let window = &context.main_window;
     let buffer = context.buffer_list.get_current_buffer();
     if buffer.cursor.line < window.scroll_line.get() {
         window.scroll_line.set(buffer.cursor.line);
@@ -20,81 +21,99 @@ pub fn adjust_scroll(term: &term::Term, context: &Context) {
     }
 }
 
+pub struct Region {
+    top: usize,
+    height: usize,
+}
+
 pub struct Window {
     pub scroll_line: Cell<usize>,
     pub show_lines: bool,
+    pub show_modeline: bool,
+
+    pub buffer_ref: BufferRef,
 }
 impl Window {
-    pub fn new() -> Window {
+    pub fn new(buffer_ref: BufferRef, show_modeline: bool, show_lines: bool) -> Window {
         Window {
             scroll_line: Cell::new(0),
-            show_lines: false,
+            show_lines,
+            show_modeline,
+            buffer_ref,
         }
     }
 
     pub fn get_window_lines(&self, term: &term::Term) -> usize {
-        term.rows - 2
+        let modeline_height = if self.show_modeline { 1 } else { 0 };
+        let minibuffer_height = 1;
+        term.rows - modeline_height - minibuffer_height
     }
 
-    fn get_pad_width(&self, term: &term::Term) -> usize {
+    fn get_pad_width(&self, region: &Region) -> usize {
         if self.show_lines {
-            let last_linenum_width =
-                format!("{}", self.scroll_line.get() + self.get_window_lines(term)).len();
+            let last_linenum_width = format!("{}", self.scroll_line.get() + region.height).len();
             last_linenum_width + 1
         } else {
             0
         }
     }
 
-    fn render_cursor(&self, term: &mut term::Term, context: &Context) {
-        let base = if context.buffer_list.minibuffer_focused {
-            term.rows - 1
-        } else {
-            0
-        };
-
-        let buffer = context.buffer_list.get_current_buffer();
+    fn render_cursor(&self, term: &mut term::Term, context: &Context, region: &Region) {
+        let buffer = context
+            .buffer_list
+            .resolve_ref(self.buffer_ref)
+            .expect("can't render window because the buffer does not exist anymore.");
 
         term.set_cursor(
-            base + buffer.cursor.line - self.scroll_line.get() + 1,
-            buffer.cursor.column + self.get_pad_width(term) + 1,
+            region.top + buffer.cursor.line - self.scroll_line.get() + 1,
+            buffer.cursor.column + self.get_pad_width(region) + 1,
         );
     }
 
-    fn render_window(&self, term: &mut term::Term, context: &Context) {
-        let offset = self.get_pad_width(term);
+    fn render_window(
+        &self,
+        term: &mut term::Term,
+        context: &Context,
+        region: &Region,
+        _flashed: bool,
+    ) {
+        let offset = self.get_pad_width(region);
         let window_columns = term.columns - offset;
 
-        term.set_cursor(1, 1);
-
-        let window_lines = term.rows - 2;
-
-        let offset = self.get_pad_width(term);
-
-        let buffer = context.buffer_list.get_main_buffer();
+        let buffer = context
+            .buffer_list
+            .resolve_ref(self.buffer_ref)
+            .expect("can't render a buffer that has been removed.");
 
         // Main window
-        for row in 0..window_lines {
+        for row in 0..region.height {
             let linenum = row + self.scroll_line.get();
 
-            if let Some(line) = buffer.get_line(linenum) {
-                if self.show_lines {
-                    term.csi("38;5;240m");
-                    term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
-                }
+            let (line_content, line_present) = if let Some(line) = buffer.get_line(linenum) {
+                (&line[..cmp::min(line.len(), window_columns)], true)
+            } else {
+                ("", false)
+            };
 
-                term.csi("m");
-                term.write(&line[..cmp::min(line.len(), window_columns)]);
+            if self.show_lines && line_present {
+                term.csi("38;5;240m");
+                term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
+            } else {
+                term.write(&format!("{:width$}", "", width = offset))
             }
 
-            term.erase_line(term::ErasePart::ToEnd);
-            term.write("\r\n");
+            term.csi("m");
+            write_line(term, line_content, window_columns);
         }
+
         term.csi("m");
     }
 
     fn render_modeline(&self, term: &mut term::Term, context: &Context) {
-        let buffer = &context.buffer_list.get_main_buffer();
+        let buffer = &context
+            .buffer_list
+            .resolve_ref(self.buffer_ref)
+            .expect("can't render a buffer that has been deleted.");
 
         term.csi("38;5;15m");
         term.csi("48;5;236m");
@@ -123,31 +142,64 @@ impl Window {
             term.columns,
         );
     }
-}
 
-fn render_minibuffer(term: &mut term::Term, context: &Context, flashed: bool) {
-    if flashed {
-        term.csi(";7m");
-    } else {
-        term.csi("m");
+    // last: if this window is being rendered over the last
+    fn render(&self, term: &mut term::Term, context: &Context, region: &Region, flashed: bool) {
+        if self.show_modeline {
+            self.render_window(
+                term,
+                context,
+                &Region {
+                    top: region.top,
+                    height: region.height - 1,
+                },
+                flashed,
+            );
+            self.render_modeline(term, context);
+        } else {
+            self.render_window(
+                term,
+                context,
+                &Region {
+                    top: region.top,
+                    height: region.height,
+                },
+                flashed,
+            );
+        }
     }
-    write_line(
-        term,
-        format!("{}", context.buffer_list.minibuffer.to_string()),
-        term.columns,
-    );
 }
 
 fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
-    let win = &context.window;
+    let main_window = &context.main_window;
+    let minibuffer_window = &context.minibuffer_window;
 
     term.hide_cursor();
 
-    win.render_window(term, context);
-    win.render_modeline(term, context);
-    render_minibuffer(term, context, flashed);
+    let minibuffer_height = context.buffer_list.minibuffer.lines_count();
 
-    win.render_cursor(term, context);
+    let minibuffer_region = Region {
+        top: term.rows - minibuffer_height,
+        height: minibuffer_height,
+    };
+
+    let main_window_region = Region {
+        top: 0,
+        height: term.rows - minibuffer_height,
+    };
+
+    term.set_cursor(1, 1);
+
+    main_window.render(term, context, &main_window_region, flashed);
+    context
+        .minibuffer_window
+        .render(term, context, &minibuffer_region, flashed);
+
+    if context.buffer_list.minibuffer_focused {
+        minibuffer_window.render_cursor(term, context, &minibuffer_region);
+    } else {
+        main_window.render_cursor(term, context, &main_window_region);
+    }
 
     term.show_cursor();
     term.flush()

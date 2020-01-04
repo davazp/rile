@@ -1,6 +1,18 @@
 use crate::minibuffer;
 use crate::Buffer;
 
+#[derive(Copy, Clone)]
+pub struct BufferRef(u64);
+
+impl BufferRef {
+    pub fn main_window() -> BufferRef {
+        BufferRef(0)
+    }
+    pub fn minibuffer_window() -> BufferRef {
+        BufferRef(1)
+    }
+}
+
 pub struct BufferList {
     pub minibuffer_focused: bool,
     main_buffer: Buffer,
@@ -13,6 +25,16 @@ impl BufferList {
             minibuffer_focused: false,
             main_buffer: main,
             minibuffer: minibuffer::new(),
+        }
+    }
+
+    pub fn resolve_ref(&self, buffer_ref: BufferRef) -> Option<&Buffer> {
+        if buffer_ref.0 == 0 {
+            Some(&self.main_buffer)
+        } else if buffer_ref.0 == 1 {
+            Some(&self.minibuffer)
+        } else {
+            None
         }
     }
 

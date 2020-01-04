@@ -4,7 +4,7 @@
 extern crate signal_hook;
 
 use rile::buffer::Buffer;
-use rile::buffer_list::BufferList;
+use rile::buffer_list::{BufferList, BufferRef};
 use rile::context::{Context, GoalColumn};
 use rile::event_loop::{event_loop, EventLoopState};
 use rile::term::{with_raw_mode, Term};
@@ -47,7 +47,8 @@ fn main() {
             Buffer::from_string("")
         }),
 
-        window: Window::new(),
+        main_window: Window::new(BufferRef::main_window(), true, true),
+        minibuffer_window: Window::new(BufferRef::minibuffer_window(), false, false),
 
         was_resized: Arc::new(AtomicBool::new(false)),
 

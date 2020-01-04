@@ -191,7 +191,7 @@ const CONTEXT_LINES: usize = 2;
 
 pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
     let buffer = context.buffer_list.get_current_buffer_as_mut();
-    let window = &context.window;
+    let window = &context.main_window;
     let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
     let target = window.scroll_line.get() + offset;
     if target < buffer.lines_count() {
@@ -205,7 +205,7 @@ pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
 }
 
 pub fn previous_screen(context: &mut Context, term: &mut Term) -> Result {
-    let window = &context.window;
+    let window = &context.main_window;
     let buffer = context.buffer_list.get_current_buffer_as_mut();
 
     if window.scroll_line.get() == 0 {
