@@ -108,7 +108,7 @@ impl Window {
 
         let buffer_progress = if scroll_line == 0 {
             "Top".to_string()
-        } else if self.last_visible_line(region) >= buffer.lines_count() {
+        } else if self.last_visible_line(region) >= buffer.lines_count() - 1 {
             "Bot".to_string()
         } else {
             format!("{}%", 100 * (buffer.cursor.line + 1) / buffer.lines_count())
