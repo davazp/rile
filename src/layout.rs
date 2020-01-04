@@ -1,6 +1,8 @@
 use crate::term;
 use crate::Context;
 
+use std::cmp;
+
 #[derive(Clone)]
 pub struct Region {
     pub top: usize,
@@ -8,12 +10,12 @@ pub struct Region {
 }
 
 pub struct Layout {
-    main_window_region: Region,
-    minibuffer_region: Region,
+    pub main_window_region: Region,
+    pub minibuffer_region: Region,
 }
 
 pub fn get_layout(term: &term::Term, context: &Context) -> Layout {
-    let minibuffer_height = context.buffer_list.minibuffer.lines_count();
+    let minibuffer_height = cmp::min(context.buffer_list.minibuffer.lines_count(), term.rows / 3);
 
     let minibuffer_region = Region {
         top: term.rows - minibuffer_height,

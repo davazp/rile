@@ -192,29 +192,19 @@ fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
 
     term.hide_cursor();
 
-    let minibuffer_height = context.buffer_list.minibuffer.lines_count();
-
-    let minibuffer_region = layout::Region {
-        top: term.rows - minibuffer_height,
-        height: minibuffer_height,
-    };
-
-    let main_window_region = layout::Region {
-        top: 0,
-        height: term.rows - minibuffer_height,
-    };
+    let layout = layout::get_layout(term, context);
 
     term.set_cursor(1, 1);
 
-    main_window.render(term, context, &main_window_region, flashed);
+    main_window.render(term, context, &layout.main_window_region, flashed);
     context
         .minibuffer_window
-        .render(term, context, &minibuffer_region, flashed);
+        .render(term, context, &layout.minibuffer_region, flashed);
 
     if context.buffer_list.minibuffer_focused {
-        minibuffer_window.render_cursor(term, context, &minibuffer_region);
+        minibuffer_window.render_cursor(term, context, &layout.minibuffer_region);
     } else {
-        main_window.render_cursor(term, context, &main_window_region);
+        main_window.render_cursor(term, context, &layout.main_window_region);
     }
 
     term.show_cursor();
