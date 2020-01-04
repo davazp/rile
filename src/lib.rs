@@ -4,6 +4,7 @@ pub mod context;
 pub mod event_loop;
 pub mod key;
 pub mod keymap;
+pub mod layout;
 pub mod minibuffer;
 pub mod read;
 pub mod term;

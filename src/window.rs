@@ -4,26 +4,40 @@ use std::thread;
 use std::time::Duration;
 
 use crate::buffer_list::BufferRef;
+use crate::layout;
 use crate::term;
 use crate::Context;
 
-/// Adjust the scroll level so the cursor is on the screen.
-pub fn adjust_scroll(term: &term::Term, context: &Context) {
-    let window = &context.main_window;
-    let buffer = context.buffer_list.get_current_buffer();
-    if buffer.cursor.line < window.scroll_line.get() {
-        window.scroll_line.set(buffer.cursor.line);
-    }
-    if buffer.cursor.line > window.scroll_line.get() + window.get_window_lines(term) - 1 {
-        window
-            .scroll_line
-            .set(buffer.cursor.line - (window.get_window_lines(term) - 1));
+pub fn get_current_window(context: &Context) -> &Window {
+    if context.buffer_list.minibuffer_focused {
+        &context.minibuffer_window
+    } else {
+        &context.main_window
     }
 }
 
-pub struct Region {
-    top: usize,
-    height: usize,
+/// Adjust the scroll level so the cursor is on the screen.
+pub fn adjust_scroll(term: &term::Term, context: &Context) {
+    let window = get_current_window(context);
+    let region = layout::get_current_window_region(term, context);
+
+    let buffer = match context.buffer_list.resolve_ref(window.buffer_ref) {
+        Some(buffer) => buffer,
+        None => {
+            return;
+        }
+    };
+
+    if buffer.cursor.line < window.first_visible_line() {
+        window.scroll_line.set(buffer.cursor.line);
+    }
+
+    let last_visible_line = window.last_visible_line(&region);
+    if buffer.cursor.line > last_visible_line {
+        window
+            .scroll_line
+            .set(buffer.cursor.line - window.window_lines(&region) + 1);
+    }
 }
 
 pub struct Window {
@@ -43,13 +57,7 @@ impl Window {
         }
     }
 
-    pub fn get_window_lines(&self, term: &term::Term) -> usize {
-        let modeline_height = if self.show_modeline { 1 } else { 0 };
-        let minibuffer_height = 1;
-        term.rows - modeline_height - minibuffer_height
-    }
-
-    fn get_pad_width(&self, region: &Region) -> usize {
+    fn get_pad_width(&self, region: &layout::Region) -> usize {
         if self.show_lines {
             let last_linenum_width = format!("{}", self.scroll_line.get() + region.height).len();
             last_linenum_width + 1
@@ -58,23 +66,27 @@ impl Window {
         }
     }
 
-    fn render_cursor(&self, term: &mut term::Term, context: &Context, region: &Region) {
+    fn render_cursor(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {
         let buffer = context
             .buffer_list
             .resolve_ref(self.buffer_ref)
             .expect("can't render window because the buffer does not exist anymore.");
 
-        term.set_cursor(
-            region.top + buffer.cursor.line - self.scroll_line.get() + 1,
-            buffer.cursor.column + self.get_pad_width(region) + 1,
-        );
+        let screen_line = buffer.cursor.line.checked_sub(self.scroll_line.get());
+
+        if let Some(row) = screen_line {
+            term.set_cursor(
+                region.top + row + 1,
+                buffer.cursor.column + self.get_pad_width(region) + 1,
+            );
+        }
     }
 
     fn render_window(
         &self,
         term: &mut term::Term,
         context: &Context,
-        region: &Region,
+        region: &layout::Region,
         _flashed: bool,
     ) {
         let offset = self.get_pad_width(region);
@@ -86,7 +98,7 @@ impl Window {
             .expect("can't render a buffer that has been removed.");
 
         // Main window
-        for row in 0..region.height {
+        for row in 0..self.window_lines(region) {
             let linenum = row + self.scroll_line.get();
 
             let (line_content, line_present) = if let Some(line) = buffer.get_line(linenum) {
@@ -109,7 +121,7 @@ impl Window {
         term.csi("m");
     }
 
-    fn render_modeline(&self, term: &mut term::Term, context: &Context) {
+    fn render_modeline(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {
         let buffer = &context
             .buffer_list
             .resolve_ref(self.buffer_ref)
@@ -122,7 +134,7 @@ impl Window {
 
         let buffer_progress = if scroll_line == 0 {
             "Top".to_string()
-        } else if scroll_line + self.get_window_lines(term) >= buffer.lines_count() {
+        } else if self.last_visible_line(region) >= buffer.lines_count() {
             "Bot".to_string()
         } else {
             format!("{}%", 100 * (buffer.cursor.line + 1) / buffer.lines_count())
@@ -143,29 +155,33 @@ impl Window {
         );
     }
 
-    // last: if this window is being rendered over the last
-    fn render(&self, term: &mut term::Term, context: &Context, region: &Region, flashed: bool) {
+    fn first_visible_line(&self) -> usize {
+        self.scroll_line.get()
+    }
+
+    pub fn window_lines(&self, region: &layout::Region) -> usize {
         if self.show_modeline {
-            self.render_window(
-                term,
-                context,
-                &Region {
-                    top: region.top,
-                    height: region.height - 1,
-                },
-                flashed,
-            );
-            self.render_modeline(term, context);
+            region.height - 1
         } else {
-            self.render_window(
-                term,
-                context,
-                &Region {
-                    top: region.top,
-                    height: region.height,
-                },
-                flashed,
-            );
+            region.height
+        }
+    }
+
+    fn last_visible_line(&self, region: &layout::Region) -> usize {
+        self.scroll_line.get() + self.window_lines(region) - 1
+    }
+
+    // last: if this window is being rendered over the last
+    fn render(
+        &self,
+        term: &mut term::Term,
+        context: &Context,
+        region: &layout::Region,
+        flashed: bool,
+    ) {
+        self.render_window(term, context, region, flashed);
+        if self.show_modeline {
+            self.render_modeline(term, context, region);
         }
     }
 }
@@ -178,12 +194,12 @@ fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
 
     let minibuffer_height = context.buffer_list.minibuffer.lines_count();
 
-    let minibuffer_region = Region {
+    let minibuffer_region = layout::Region {
         top: term.rows - minibuffer_height,
         height: minibuffer_height,
     };
 
-    let main_window_region = Region {
+    let main_window_region = layout::Region {
         top: 0,
         height: term.rows - minibuffer_height,
     };

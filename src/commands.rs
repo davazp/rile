@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::buffer;
 use crate::context;
+use crate::layout;
 use crate::read;
 use crate::term::Term;
 use crate::window::{self, message};
@@ -190,9 +191,12 @@ pub fn save_buffer(context: &mut Context, _term: &mut Term) -> Result {
 const CONTEXT_LINES: usize = 2;
 
 pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
-    let buffer = context.buffer_list.get_current_buffer_as_mut();
     let window = &context.main_window;
-    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
+    let region = layout::get_current_window_region(term, context);
+    let offset = window.window_lines(&region) - 1 - CONTEXT_LINES;
+
+    let buffer = context.buffer_list.get_current_buffer_as_mut();
+
     let target = window.scroll_line.get() + offset;
     if target < buffer.lines_count() {
         window.scroll_line.set(target);
@@ -206,14 +210,18 @@ pub fn next_screen(context: &mut Context, term: &mut Term) -> Result {
 
 pub fn previous_screen(context: &mut Context, term: &mut Term) -> Result {
     let window = &context.main_window;
-    let buffer = context.buffer_list.get_current_buffer_as_mut();
 
     if window.scroll_line.get() == 0 {
         message(context, "Beginning of buffer");
         return Err(());
     }
-    let offset = window.get_window_lines(term) - 1 - CONTEXT_LINES;
+
+    let region = layout::get_current_window_region(term, context);
+    let offset = window.window_lines(&region) - 1 - CONTEXT_LINES;
+
+    let buffer = context.buffer_list.get_current_buffer_as_mut();
     buffer.cursor.line = window.scroll_line.get() + CONTEXT_LINES;
+
     window.scroll_line.set(
         if let Some(scroll_line) = window.scroll_line.get().checked_sub(offset) {
             scroll_line
