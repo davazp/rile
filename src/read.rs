@@ -4,7 +4,7 @@ use crate::term::{read_key_timeout, reconciliate_term_size, Term};
 use crate::window::{adjust_scroll, message, refresh_screen};
 use crate::{Context, Key};
 
-pub fn read_key(term: &mut Term, context: &Context) -> Key {
+pub fn read_key(term: &mut Term, context: &mut Context) -> Key {
     refresh_screen(term, context);
     loop {
         if let Some(key) = read_key_timeout() {
@@ -23,7 +23,10 @@ pub fn read_key_binding(
     context: &mut Context,
 ) -> Result<CommandHandler, Vec<Key>> {
     let mut read = vec![];
-    let mut keymap = context.buffer_list.get_current_buffer().keymap.clone();
+
+    let window = context.window_list.get_current_window();
+    let buffer = context.buffer_list.resolve_ref(window.buffer_ref);
+    let mut keymap = buffer.keymap.clone();
 
     loop {
         if !read.is_empty() {
@@ -49,9 +52,11 @@ pub fn read_key_binding(
 
 pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Result<String, ()> {
     context.buffer_list.minibuffer.set(prompt);
-    context.buffer_list.minibuffer_focused = true;
+    context.window_list.minibuffer_focused = true;
 
-    let buffer = context.buffer_list.get_current_buffer_as_mut();
+    let window = context.window_list.get_current_window();
+    let buffer = context.buffer_list.resolve_ref_as_mut(window.buffer_ref);
+
     buffer.cursor.line = 0;
     buffer.cursor.column = prompt.len();
 
@@ -65,7 +70,7 @@ pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Resu
         Err(())
     };
 
-    context.buffer_list.minibuffer_focused = false;
+    context.window_list.minibuffer_focused = false;
 
     result
 }

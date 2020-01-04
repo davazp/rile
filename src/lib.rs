@@ -9,6 +9,7 @@ pub mod minibuffer;
 pub mod read;
 pub mod term;
 pub mod window;
+pub mod window_list;
 
 pub use buffer::{Buffer, Cursor};
 pub use context::Context;

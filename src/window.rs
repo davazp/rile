@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::cmp;
 use std::thread;
 use std::time::Duration;
@@ -8,40 +7,24 @@ use crate::layout;
 use crate::term;
 use crate::Context;
 
-pub fn get_current_window(context: &Context) -> &Window {
-    if context.buffer_list.minibuffer_focused {
-        &context.minibuffer_window
-    } else {
-        &context.main_window
-    }
-}
-
 /// Adjust the scroll level so the cursor is on the screen.
-pub fn adjust_scroll(term: &term::Term, context: &Context) {
-    let window = get_current_window(context);
+pub fn adjust_scroll(term: &term::Term, context: &mut Context) {
     let region = layout::get_current_window_region(term, context);
-
-    let buffer = match context.buffer_list.resolve_ref(window.buffer_ref) {
-        Some(buffer) => buffer,
-        None => {
-            return;
-        }
-    };
+    let window = context.window_list.get_current_window_as_mut();
+    let buffer = context.buffer_list.resolve_ref(window.buffer_ref);
 
     if buffer.cursor.line < window.first_visible_line() {
-        window.scroll_line.set(buffer.cursor.line);
+        window.scroll_line = buffer.cursor.line;
     }
 
     let last_visible_line = window.last_visible_line(&region);
     if buffer.cursor.line > last_visible_line {
-        window
-            .scroll_line
-            .set(buffer.cursor.line - window.window_lines(&region) + 1);
+        window.scroll_line = buffer.cursor.line - window.window_lines(&region) + 1;
     }
 }
 
 pub struct Window {
-    pub scroll_line: Cell<usize>,
+    pub scroll_line: usize,
     pub show_lines: bool,
     pub show_modeline: bool,
 
@@ -50,7 +33,7 @@ pub struct Window {
 impl Window {
     pub fn new(buffer_ref: BufferRef, show_modeline: bool) -> Window {
         Window {
-            scroll_line: Cell::new(0),
+            scroll_line: 0,
             show_lines: false,
             show_modeline,
             buffer_ref,
@@ -59,7 +42,7 @@ impl Window {
 
     fn get_pad_width(&self, region: &layout::Region) -> usize {
         if self.show_lines {
-            let last_linenum_width = format!("{}", self.scroll_line.get() + region.height).len();
+            let last_linenum_width = format!("{}", self.scroll_line + region.height).len();
             last_linenum_width + 1
         } else {
             0
@@ -67,12 +50,9 @@ impl Window {
     }
 
     fn render_cursor(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {
-        let buffer = context
-            .buffer_list
-            .resolve_ref(self.buffer_ref)
-            .expect("can't render window because the buffer does not exist anymore.");
+        let buffer = context.buffer_list.resolve_ref(self.buffer_ref);
 
-        let screen_line = buffer.cursor.line.checked_sub(self.scroll_line.get());
+        let screen_line = buffer.cursor.line.checked_sub(self.scroll_line);
 
         if let Some(row) = screen_line {
             term.set_cursor(
@@ -92,14 +72,11 @@ impl Window {
         let offset = self.get_pad_width(region);
         let window_columns = term.columns - offset;
 
-        let buffer = context
-            .buffer_list
-            .resolve_ref(self.buffer_ref)
-            .expect("can't render a buffer that has been removed.");
+        let buffer = context.buffer_list.resolve_ref(self.buffer_ref);
 
         // Main window
         for row in 0..self.window_lines(region) {
-            let linenum = row + self.scroll_line.get();
+            let linenum = row + self.scroll_line;
 
             let (line_content, line_present) = if let Some(line) = buffer.get_line(linenum) {
                 (&line[..cmp::min(line.len(), window_columns)], true)
@@ -122,15 +99,12 @@ impl Window {
     }
 
     fn render_modeline(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {
-        let buffer = &context
-            .buffer_list
-            .resolve_ref(self.buffer_ref)
-            .expect("can't render a buffer that has been deleted.");
+        let buffer = &context.buffer_list.resolve_ref(self.buffer_ref);
 
         term.csi("38;5;15m");
         term.csi("48;5;236m");
 
-        let scroll_line = self.scroll_line.get();
+        let scroll_line = self.scroll_line;
 
         let buffer_progress = if scroll_line == 0 {
             "Top".to_string()
@@ -155,7 +129,7 @@ impl Window {
     }
 
     fn first_visible_line(&self) -> usize {
-        self.scroll_line.get()
+        self.scroll_line
     }
 
     pub fn window_lines(&self, region: &layout::Region) -> usize {
@@ -167,7 +141,7 @@ impl Window {
     }
 
     fn last_visible_line(&self, region: &layout::Region) -> usize {
-        self.scroll_line.get() + self.window_lines(region) - 1
+        self.scroll_line + self.window_lines(region) - 1
     }
 
     // last: if this window is being rendered over the last
@@ -186,8 +160,8 @@ impl Window {
 }
 
 fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
-    let main_window = &context.main_window;
-    let minibuffer_window = &context.minibuffer_window;
+    let main_window = &context.window_list.main;
+    let minibuffer_window = &context.window_list.minibuffer;
 
     term.hide_cursor();
 
@@ -197,10 +171,11 @@ fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
 
     main_window.render(term, context, &layout.main_window_region, flashed);
     context
-        .minibuffer_window
+        .window_list
+        .minibuffer
         .render(term, context, &layout.minibuffer_region, flashed);
 
-    if context.buffer_list.minibuffer_focused {
+    if context.window_list.minibuffer_focused {
         minibuffer_window.render_cursor(term, context, &layout.minibuffer_region);
     } else {
         main_window.render_cursor(term, context, &layout.main_window_region);

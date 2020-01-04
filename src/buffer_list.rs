@@ -14,7 +14,6 @@ impl BufferRef {
 }
 
 pub struct BufferList {
-    pub minibuffer_focused: bool,
     main_buffer: Buffer,
     pub minibuffer: Buffer,
 }
@@ -22,35 +21,28 @@ pub struct BufferList {
 impl BufferList {
     pub fn new(main: Buffer) -> BufferList {
         BufferList {
-            minibuffer_focused: false,
             main_buffer: main,
             minibuffer: minibuffer::new(),
         }
     }
 
-    pub fn resolve_ref(&self, buffer_ref: BufferRef) -> Option<&Buffer> {
+    pub fn resolve_ref(&self, buffer_ref: BufferRef) -> &Buffer {
         if buffer_ref.0 == 0 {
-            Some(&self.main_buffer)
+            &self.main_buffer
         } else if buffer_ref.0 == 1 {
-            Some(&self.minibuffer)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_current_buffer_as_mut(&mut self) -> &mut Buffer {
-        if self.minibuffer_focused {
-            &mut self.minibuffer
-        } else {
-            &mut self.main_buffer
-        }
-    }
-
-    pub fn get_current_buffer(&self) -> &Buffer {
-        if self.minibuffer_focused {
             &self.minibuffer
         } else {
-            &self.main_buffer
+            panic!("Can't resolve a buffer that does not exist anymore.")
+        }
+    }
+
+    pub fn resolve_ref_as_mut(&mut self, buffer_ref: BufferRef) -> &mut Buffer {
+        if buffer_ref.0 == 0 {
+            &mut self.main_buffer
+        } else if buffer_ref.0 == 1 {
+            &mut self.minibuffer
+        } else {
+            panic!("Can't resolve a buffer that does not exist anymore.")
         }
     }
 

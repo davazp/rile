@@ -9,6 +9,7 @@ use rile::context::{Context, GoalColumn};
 use rile::event_loop::{event_loop, EventLoopState};
 use rile::term::{with_raw_mode, Term};
 use rile::window::{refresh_screen, Window};
+use rile::window_list::WindowList;
 
 use std::env;
 use std::sync::atomic::AtomicBool;
@@ -47,8 +48,11 @@ fn main() {
             Buffer::from_string("")
         }),
 
-        main_window: Window::new(BufferRef::main_window(), true),
-        minibuffer_window: Window::new(BufferRef::minibuffer_window(), false),
+        window_list: WindowList {
+            main: Window::new(BufferRef::main_window(), true),
+            minibuffer: Window::new(BufferRef::minibuffer_window(), false),
+            minibuffer_focused: false,
+        },
 
         was_resized: Arc::new(AtomicBool::new(false)),
 

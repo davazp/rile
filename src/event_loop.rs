@@ -44,7 +44,7 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     let cmd = read::read_key_binding(term, context);
     let minibuffer = &mut context.buffer_list.minibuffer;
 
-    if !context.buffer_list.minibuffer_focused {
+    if !context.window_list.minibuffer_focused {
         minibuffer.truncate();
     }
 

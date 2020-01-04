@@ -35,7 +35,7 @@ pub fn get_layout(term: &term::Term, context: &Context) -> Layout {
 
 pub fn get_current_window_region(term: &term::Term, context: &Context) -> Region {
     let layout = get_layout(term, context);
-    if context.buffer_list.minibuffer_focused {
+    if context.window_list.minibuffer_focused {
         layout.minibuffer_region
     } else {
         layout.main_window_region
