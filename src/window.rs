@@ -115,7 +115,7 @@ impl Window {
             }
 
             term.csi("m");
-            write_line(term, line_content, window_columns);
+            term.write_line(line_content, window_columns);
         }
 
         term.csi("m");
@@ -143,8 +143,7 @@ impl Window {
         // On MacOsX's terminal, when you erase a line it won't fill the
         // full line with the current attributes, unlike ITerm. So we use
         // `write_line` to pad the string with spaces.
-        write_line(
-            term,
+        term.write_line(
             format!(
                 "  {}  {} L{}",
                 buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
@@ -216,13 +215,6 @@ fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
 /// Ensure the terminal reflects the latest state of the editor.
 pub fn refresh_screen(term: &mut term::Term, context: &Context) {
     render_screen(term, context, false);
-}
-
-fn write_line<T: AsRef<str>>(term: &mut term::Term, str: T, width: usize) {
-    let str = str.as_ref();
-    assert!(str.len() <= width);
-    let padded = format!("{:width$}", str, width = width);
-    term.write(&padded);
 }
 
 pub fn ding(term: &mut term::Term, context: &Context) {

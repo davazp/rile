@@ -75,6 +75,15 @@ impl Term {
     pub fn write(&mut self, str: &str) {
         self.buffer.push_str(str);
     }
+
+    /// Write the line `str` a line padded to `width`.
+    pub fn write_line<T: AsRef<str>>(&mut self, str: T, width: usize) {
+        let str = str.as_ref();
+        assert!(str.len() <= width);
+        let padded = format!("{:width$}", str, width = width);
+        self.write(&padded);
+    }
+
     pub fn flush(&mut self) {
         unistd::write(libc::STDOUT_FILENO, self.buffer.as_bytes()).unwrap();
         self.buffer.clear();
