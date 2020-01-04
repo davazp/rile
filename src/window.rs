@@ -48,10 +48,10 @@ pub struct Window {
     pub buffer_ref: BufferRef,
 }
 impl Window {
-    pub fn new(buffer_ref: BufferRef, show_modeline: bool, show_lines: bool) -> Window {
+    pub fn new(buffer_ref: BufferRef, show_modeline: bool) -> Window {
         Window {
             scroll_line: Cell::new(0),
-            show_lines,
+            show_lines: false,
             show_modeline,
             buffer_ref,
         }

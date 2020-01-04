@@ -47,8 +47,8 @@ fn main() {
             Buffer::from_string("")
         }),
 
-        main_window: Window::new(BufferRef::main_window(), true, true),
-        minibuffer_window: Window::new(BufferRef::minibuffer_window(), false, false),
+        main_window: Window::new(BufferRef::main_window(), true),
+        minibuffer_window: Window::new(BufferRef::minibuffer_window(), false),
 
         was_resized: Arc::new(AtomicBool::new(false)),
 
