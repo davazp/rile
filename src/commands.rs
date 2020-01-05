@@ -262,12 +262,7 @@ pub fn kill_rile(context: &mut Context, _term: &mut Term) -> Result {
 }
 
 pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
-    let str = read::read_string(term, context, "Search: ")?;
-
-    let window = context.window_list.get_current_window();
-    let buffer = context.buffer_list.resolve_ref_as_mut(window.buffer_ref);
-    buffer.set(str);
-
+    let _ = read::read_string(term, context, "Search: ", |_, _| {})?;
     Ok(())
 }
 

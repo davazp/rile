@@ -50,7 +50,15 @@ pub fn read_key_binding(
     }
 }
 
-pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Result<String, ()> {
+pub fn read_string<F>(
+    term: &mut Term,
+    context: &mut Context,
+    prompt: &str,
+    callback: F,
+) -> Result<String, ()>
+where
+    F: Fn(&mut Term, &mut Context),
+{
     context.buffer_list.minibuffer.set(prompt);
     context.window_list.minibuffer_focused = true;
 
@@ -60,7 +68,7 @@ pub fn read_string(term: &mut Term, context: &mut Context, prompt: &str) -> Resu
     buffer.cursor.line = 0;
     buffer.cursor.column = prompt.len();
 
-    let success = event_loop(term, context);
+    let success = event_loop(term, context, callback);
 
     let result = if success {
         let result = Ok(context.buffer_list.minibuffer.to_string());

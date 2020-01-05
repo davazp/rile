@@ -69,7 +69,10 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     true
 }
 
-pub fn event_loop(term: &mut Term, context: &mut Context) -> bool {
+pub fn event_loop<F>(term: &mut Term, context: &mut Context, callback: F) -> bool
+where
+    F: Fn(&mut Term, &mut Context),
+{
     // Save the context for a recursive event loop.
     let original_result = context.event_loop.result;
 
@@ -88,9 +91,11 @@ pub fn event_loop(term: &mut Term, context: &mut Context) -> bool {
         if let Some(result) = context.event_loop.result {
             break result;
         }
+
+        callback(term, context);
     };
 
-    // Restore the saved context.
+    //  the saved context.
     context.event_loop.result = original_result;
 
     status.is_ok()
