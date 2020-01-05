@@ -19,6 +19,9 @@ pub struct Buffer {
     pub keymap: Keymap,
     pub filename: Option<String>,
 
+    /// Substrings to highlight in the buffer.
+    pub highlight: Option<String>,
+
     /// The cursor should always be a valid reference to the buffer.
     pub cursor: Cursor,
 
@@ -32,6 +35,7 @@ impl Buffer {
             cursor: Cursor::new(),
             lines: vec!["".to_string()],
             filename: None,
+            highlight: None,
             keymap: Keymap::defaults(),
         }
     }

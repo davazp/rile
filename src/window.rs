@@ -92,7 +92,12 @@ impl Window {
             }
 
             term.csi("m");
-            term.write_line(line_content, window_columns);
+            if let Some(highlight) = &buffer.highlight {
+                let out = line_content.replace(highlight, &format!("\x1b[7m{}\x1b[m", highlight));
+                term.write_line(out);
+            } else {
+                term.write_line(line_content);
+            };
         }
 
         term.csi("m");
@@ -117,15 +122,12 @@ impl Window {
         // On MacOsX's terminal, when you erase a line it won't fill the
         // full line with the current attributes, unlike ITerm. So we use
         // `write_line` to pad the string with spaces.
-        term.write_line(
-            format!(
-                "  {}  {} L{}",
-                buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
-                buffer_progress,
-                buffer.cursor.line + 1
-            ),
-            term.columns,
-        );
+        term.write_line(format!(
+            "  {}  {} L{}",
+            buffer.filename.as_ref().unwrap_or(&"*scratch*".to_string()),
+            buffer_progress,
+            buffer.cursor.line + 1
+        ));
     }
 
     fn first_visible_line(&self) -> usize {

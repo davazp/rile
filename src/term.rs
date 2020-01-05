@@ -79,9 +79,8 @@ impl Term {
     }
 
     /// Write the line `str` a line padded to `width`.
-    pub fn write_line<T: AsRef<str>>(&mut self, str: T, width: usize) {
+    pub fn write_line<T: AsRef<str>>(&mut self, str: T) {
         let str = str.as_ref();
-        assert!(str.len() <= width);
         self.write(&str);
         self.erase_line(ErasePart::ToEnd);
         self.csi("E");
