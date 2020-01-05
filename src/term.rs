@@ -82,8 +82,9 @@ impl Term {
     pub fn write_line<T: AsRef<str>>(&mut self, str: T, width: usize) {
         let str = str.as_ref();
         assert!(str.len() <= width);
-        let padded = format!("{:width$}", str, width = width);
-        self.write(&padded);
+        self.write(&str);
+        self.csi(&format!("{}@", width - str.len()));
+        self.csi("E");
     }
 
     pub fn flush(&mut self) {
@@ -148,6 +149,10 @@ impl Term {
 
     pub fn erase_line(&mut self, part: ErasePart) {
         self.csi(&format!("{}K", part as usize));
+    }
+
+    pub fn erase_display(&mut self, part: ErasePart) {
+        self.csi(&format!("{}J", part as usize));
     }
 
     #[allow(unused)]
