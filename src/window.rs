@@ -140,6 +140,12 @@ impl Window {
         }
     }
 
+    /// Return the last visible line in the current window.
+    ///
+    /// Note that this can be greater than the number of lines in the
+    /// current buffer when close to the end of the buffer, as this
+    /// counts the space for lines rather than the buffer lines
+    /// itself.
     fn last_visible_line(&self, region: &layout::Region) -> usize {
         self.scroll_line + self.window_lines(region) - 1
     }
