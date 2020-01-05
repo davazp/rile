@@ -83,7 +83,7 @@ impl Term {
         let str = str.as_ref();
         assert!(str.len() <= width);
         self.write(&str);
-        self.csi(&format!("{}@", width - str.len()));
+        self.erase_line(ErasePart::ToEnd);
         self.csi("E");
     }
 
