@@ -6,7 +6,9 @@ authors = ["David Vázquez Púa <davazp@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/davazp/rile"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+# Slow down the terminal so we can better see the effects of rendering the editor.
+debug_slow_term = []
 
 [dependencies]
 nix = "0.16.0"

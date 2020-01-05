@@ -4,6 +4,8 @@ use nix::unistd;
 use std::env;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
 
 use crate::Key;
 
@@ -85,7 +87,15 @@ impl Term {
     }
 
     pub fn flush(&mut self) {
-        unistd::write(libc::STDOUT_FILENO, self.buffer.as_bytes()).unwrap();
+        let bytes = self.buffer.as_bytes();
+        if cfg!(feature = "debug_slow_term") {
+            for chunk in bytes.chunks(16) {
+                unistd::write(libc::STDOUT_FILENO, chunk).unwrap();
+                thread::sleep(Duration::from_micros(750));
+            }
+        } else {
+            unistd::write(libc::STDOUT_FILENO, bytes).unwrap();
+        }
         self.buffer.clear();
     }
 
