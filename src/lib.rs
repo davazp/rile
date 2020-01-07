@@ -1,3 +1,6 @@
+//! rile is a simple editor written in Rust.
+//!
+
 pub mod buffer;
 pub mod buffer_list;
 pub mod context;

@@ -54,10 +54,6 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
             let _ = handler(context, term);
         }
         Err(keys) => {
-            if keys == vec![Key::parse_unchecked("C-g")] {
-                return false;
-            }
-
             if let Some(ch) = is_self_insert(&keys) {
                 commands::insert_char(context, ch);
             } else {
