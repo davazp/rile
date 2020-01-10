@@ -3,6 +3,7 @@
 
 pub mod buffer;
 pub mod buffer_list;
+pub mod color;
 pub mod context;
 pub mod event_loop;
 pub mod key;
@@ -15,6 +16,7 @@ pub mod window;
 pub mod window_list;
 
 pub use buffer::{Buffer, Cursor};
+pub use color::Color;
 pub use context::Context;
 pub use key::Key;
 pub use keymap::Keymap;
