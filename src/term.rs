@@ -104,6 +104,23 @@ impl Term {
         self.write(&format!("\x1b[{}", s));
     }
 
+    /// 8-bit
+    pub fn fg(&mut self, n: u8) {
+        self.csi(&format!("38;5;{}m", n));
+    }
+    pub fn bg(&mut self, n: u8) {
+        self.csi(&format!("48;5;{}m", n));
+    }
+
+    /// True color
+    pub fn rgb_fg(&mut self, r: u8, g: u8, b: u8) {
+        self.csi(&format!("38;2;{};{};{}m", r, g, b));
+    }
+
+    pub fn rgb_bg(&mut self, r: u8, g: u8, b: u8) {
+        self.csi(&format!("48;2;{};{};{}m", r, g, b));
+    }
+
     /// Enable the alternative screen buffer.
     ///
     /// It will switch to a screen buffer with no scrolling. You can

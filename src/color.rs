@@ -11,13 +11,17 @@ pub struct Color {
 
 impl Color {
     /// Build a color from the red, green and blue components.
-    pub fn new(r: u8, g: u8, b: u8) -> Color {
+    pub fn from_rgb(r: u8, g: u8, b: u8) -> Color {
         Color { r, g, b }
     }
 
     /// Return a color by name by it exists.
     pub fn from_name(name: &str) -> Option<Color> {
         COLORS_256.iter().find(|e| e.name == name).map(|e| e.color)
+    }
+
+    pub fn name_from_code(n: u8) -> &'static str {
+        COLORS_256[n as usize].name
     }
 
     fn distance_square(color1: Color, color2: Color) -> i32 {
@@ -316,14 +320,14 @@ mod tests {
 
     #[test]
     fn test_compare_two_colors() {
-        let c1 = Color::new(0, 0, 0);
-        let c2 = Color::new(0, 0, 0);
+        let c1 = Color::from_rgb(0, 0, 0);
+        let c2 = Color::from_rgb(0, 0, 0);
         assert_eq!(c1, c2);
     }
 
     #[test]
     fn test_color_approximation() {
-        let c = Color::new(1, 2, 3);
+        let c = Color::from_rgb(1, 2, 3);
         assert_eq!(c.to_256_code(), 0)
     }
 }

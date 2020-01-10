@@ -5,6 +5,7 @@ description = "An educational text editor written in Rust."
 authors = ["David Vázquez Púa <davazp@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/davazp/rile"
+default-run = "rile"
 
 [features]
 # Slow down the terminal so we can better see the effects of rendering the editor.
