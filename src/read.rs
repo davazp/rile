@@ -1,4 +1,4 @@
-use crate::event_loop::event_loop;
+use crate::event_loop::{self, event_loop};
 use crate::keymap::{CommandHandler, Item};
 use crate::term::{read_key_timeout, reconciliate_term_size, Term};
 use crate::window::{adjust_scroll, message, refresh_screen};
@@ -21,7 +21,7 @@ pub fn read_key(term: &mut Term, context: &mut Context) -> Key {
 pub fn read_key_binding(
     term: &mut Term,
     context: &mut Context,
-) -> Result<CommandHandler, Vec<Key>> {
+) -> event_loop::Result<CommandHandler> {
     let mut read = vec![];
 
     let window = context.window_list.get_current_window();
@@ -55,7 +55,7 @@ pub fn read_string<F>(
     context: &mut Context,
     prompt: &str,
     callback: F,
-) -> Result<String, ()>
+) -> event_loop::Result<String>
 where
     F: Fn(&mut Term, &mut Context),
 {
@@ -68,16 +68,10 @@ where
     buffer.cursor.line = 0;
     buffer.cursor.column = prompt.len();
 
-    let success = event_loop(term, context, callback);
+    let result =
+        event_loop(term, context, callback).map(|_| context.buffer_list.minibuffer.to_string());
 
-    let result = if success {
-        let result = Ok(context.buffer_list.minibuffer.to_string());
-        context.buffer_list.minibuffer.truncate();
-        result
-    } else {
-        Err(())
-    };
-
+    context.buffer_list.minibuffer.truncate();
     context.window_list.minibuffer_focused = false;
 
     result

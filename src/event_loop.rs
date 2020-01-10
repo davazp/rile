@@ -4,12 +4,13 @@ use crate::term::Term;
 use crate::window::adjust_scroll;
 use crate::{Context, Key};
 
-type Result = std::result::Result<(), ()>;
+pub type EventLoopError = Vec<Key>;
+pub type Result<T> = std::result::Result<T, EventLoopError>;
 
 pub struct EventLoopState {
     /// If set (Some), the event loop is about to terminate with a
     /// specified Result.
-    pub result: Option<Result>,
+    pub result: Option<Result<()>>,
 }
 
 impl EventLoopState {
@@ -17,7 +18,7 @@ impl EventLoopState {
         EventLoopState { result: None }
     }
 
-    pub fn complete(&mut self, result: Result) {
+    pub fn complete(&mut self, result: Result<()>) {
         self.result = Some(result)
     }
 
@@ -40,10 +41,10 @@ fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
 }
 
 /// Process user input.
-fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
+fn process_user_input(term: &mut Term, context: &mut Context) -> Result<()> {
     let cmd = read::read_key_binding(term, context);
-    let minibuffer = &mut context.buffer_list.minibuffer;
 
+    let minibuffer = &mut context.buffer_list.minibuffer;
     if !context.window_list.minibuffer_focused {
         minibuffer.truncate();
     }
@@ -52,31 +53,31 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> bool {
     match cmd {
         Ok(handler) => {
             let _ = handler(context, term);
+            Ok(())
         }
         Err(keys) => {
             if let Some(ch) = is_self_insert(&keys) {
                 commands::insert_char(context, ch);
+                Ok(())
             } else {
                 minibuffer.set(format!("{} is undefined", Key::format_seq(&keys)));
+                Err(keys)
             }
         }
-    };
-
-    true
+    }
 }
 
-pub fn event_loop<F>(term: &mut Term, context: &mut Context, callback: F) -> bool
+pub fn event_loop<F>(term: &mut Term, context: &mut Context, callback: F) -> Result<()>
 where
     F: Fn(&mut Term, &mut Context),
 {
     // Save the context for a recursive event loop.
-    let original_result = context.event_loop.result;
+    let original_result = context.event_loop.result.take();
 
-    let status = loop {
-        context.event_loop.result = None;
+    let result = loop {
         context.goal_column.to_preserve = false;
 
-        process_user_input(term, context);
+        let _ = process_user_input(term, context);
 
         if !context.goal_column.to_preserve {
             context.goal_column.column = None;
@@ -84,7 +85,7 @@ where
 
         adjust_scroll(term, context);
 
-        if let Some(result) = context.event_loop.result {
+        if let Some(result) = context.event_loop.result.take() {
             break result;
         }
 
@@ -94,5 +95,5 @@ where
     //  the saved context.
     context.event_loop.result = original_result;
 
-    status.is_ok()
+    result
 }

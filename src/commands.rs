@@ -279,6 +279,6 @@ pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
 pub fn keyboard_quit(context: &mut Context, term: &mut Term) -> Result {
     message(context, "Quit");
     window::ding(term, context);
-    context.event_loop.complete(Err(()));
+    context.event_loop.complete(Err(vec![]));
     Ok(())
 }
