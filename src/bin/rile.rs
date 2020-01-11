@@ -4,16 +4,10 @@
 extern crate signal_hook;
 
 use rile::buffer::Buffer;
-use rile::buffer_list::{BufferList, BufferRef};
-use rile::context::{Context, GoalColumn};
-use rile::event_loop::{event_loop, EventLoopState};
+use rile::context::Context;
+use rile::event_loop::event_loop;
 use rile::term::{with_raw_mode, Term};
-use rile::window::{refresh_screen, Window};
-use rile::window_list::WindowList;
-
-use std::env;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use rile::window::refresh_screen;
 
 use clap::{App, Arg};
 
@@ -41,28 +35,11 @@ fn main() {
 
     let file_arg = matches.value_of("FILE");
 
-    let mut context = Context {
-        buffer_list: BufferList::new(if let Some(filename) = file_arg {
-            Buffer::from_file(filename)
-        } else {
-            Buffer::from_string("")
-        }),
-
-        window_list: WindowList {
-            main: Window::new(BufferRef::main_window(), true),
-            minibuffer: Window::new(BufferRef::minibuffer_window(), false),
-            minibuffer_focused: false,
-        },
-
-        was_resized: Arc::new(AtomicBool::new(false)),
-
-        event_loop: EventLoopState::new(),
-
-        goal_column: GoalColumn {
-            to_preserve: false,
-            column: None,
-        },
-    };
+    let mut context = Context::new(if let Some(filename) = file_arg {
+        Buffer::from_file(filename)
+    } else {
+        Buffer::from_string("")
+    });
 
     signal_hook::flag::register(signal_hook::SIGWINCH, context.was_resized.clone()).unwrap();
 
