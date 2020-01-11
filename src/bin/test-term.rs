@@ -4,24 +4,30 @@
 //! specific terminal.
 //!
 
+use std::io;
+use std::io::Write;
+
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use rile::term::{read_key_timeout, with_raw_mode, ErasePart, Term};
 use rile::Color;
 use rile::Key;
 
-fn check_system_color(term: &mut Term) {
+fn check_system_color(term: &mut Term) -> io::Result<()> {
     for n in 0..255 {
         term.reset_attr();
         term.bg(n);
-        term.write(&format!("{} {}", n, Color::name_from_code(n)));
+
+        write!(term, "{} {}", n, Color::name_from_code(n))?;
+
         term.erase_line(ErasePart::ToEnd);
-        term.write("\n");
-        term.flush()
+        write!(term, "\n")?;
+        term.flush()?;
     }
+    Ok(())
 }
 
-fn check_truecolor(term: &mut Term) {
+fn check_truecolor(term: &mut Term) -> io::Result<()> {
     for r in (0..255).step_by(10) {
         for g in (0..255).step_by(10) {
             for b in (0..255).step_by(10) {
@@ -30,20 +36,21 @@ fn check_truecolor(term: &mut Term) {
                 let block = "                    ";
                 term.reset_attr();
                 term.rgb_bg(r, g, b);
-                term.flush();
-                term.write(block);
+                term.flush()?;
+                write!(term, "{}", block)?;
 
                 term.bg(approx);
-                term.write(block);
+                write!(term, "{}", block)?;
 
                 term.reset_attr();
-                term.write("\n");
-                term.flush();
+                write!(term, "\n")?;
+                term.flush()?;
             }
-            term.write("\n");
+            write!(term, "\n")?;
         }
-        term.write("\n\n");
+        write!(term, "\n\n")?;
     }
+    Ok(())
 }
 
 fn check_input() {
@@ -79,13 +86,13 @@ fn main() {
         ("input", _) => check_input(),
         ("color", Some(submatches)) => {
             if submatches.is_present("list-system-colors") {
-                check_system_color(&mut term);
+                check_system_color(&mut term).unwrap();
             } else {
-                check_truecolor(&mut term);
+                check_truecolor(&mut term).unwrap();
             }
             term.reset_attr();
             term.erase_line(ErasePart::ToEnd);
-            term.flush();
+            term.flush().unwrap();
         }
         _ => unreachable!(),
     }

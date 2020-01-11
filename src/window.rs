@@ -1,4 +1,5 @@
 use std::cmp;
+use std::io::Write;
 use std::thread;
 use std::time::Duration;
 
@@ -86,9 +87,9 @@ impl Window {
 
             if self.show_lines && line_present {
                 term.csi("38;5;240m");
-                term.write(&format!("{:width$} ", linenum + 1, width = offset - 1));
+                write!(term, "{:width$} ", linenum + 1, width = offset - 1).unwrap();
             } else {
-                term.write(&format!("{:width$}", "", width = offset))
+                write!(term, "{:width$}", "", width = offset).unwrap();
             }
 
             term.reset_attr();
@@ -167,7 +168,7 @@ impl Window {
     }
 }
 
-fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
+fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) -> std::io::Result<()> {
     let main_window = &context.window_list.main;
     let minibuffer_window = &context.window_list.minibuffer;
 
@@ -190,24 +191,28 @@ fn render_screen(term: &mut term::Term, context: &Context, flashed: bool) {
     }
 
     term.show_cursor();
-    term.flush()
+
+    term.flush()?;
+
+    Ok(())
 }
 
 /// Refresh the screen.
 ///
 /// Ensure the terminal reflects the latest state of the editor.
-pub fn refresh_screen(term: &mut term::Term, context: &Context) {
-    render_screen(term, context, false);
+pub fn refresh_screen(term: &mut term::Term, context: &Context) -> std::io::Result<()> {
+    render_screen(term, context, false)
 }
 
-pub fn ding(term: &mut term::Term, context: &Context) {
-    render_screen(term, context, true);
+pub fn ding(term: &mut term::Term, context: &Context) -> std::io::Result<()> {
+    render_screen(term, context, true)?;
     thread::sleep(Duration::from_millis(100));
     // Discard pending output. This avoids the situation where keeping
     // C-g press will overwhelm the event loop and hang the system
     // compmletely until completed.
     term::discard_input_buffer();
-    render_screen(term, context, false);
+    render_screen(term, context, false)?;
+    Ok(())
 }
 
 /// Show a message in the minibuffer.

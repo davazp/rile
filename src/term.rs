@@ -1,11 +1,13 @@
-use nix::libc;
-use nix::sys::termios;
-use nix::unistd;
 use std::env;
+use std::io::prelude::*;
 use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
+
+use nix::libc;
+use nix::sys::termios;
+use nix::unistd;
 
 use crate::Key;
 
@@ -58,50 +60,50 @@ pub fn with_raw_mode<F: FnOnce()>(run: F) -> nix::Result<()> {
 }
 
 pub struct Term {
-    buffer: String,
+    buffer: Vec<u8>,
     // The size of the terminal
     pub rows: usize,
     pub columns: usize,
+}
+
+impl Write for Term {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        self.buffer.write(buffer)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        if cfg!(feature = "debug_slow_term") {
+            for chunk in self.buffer.chunks(16) {
+                unistd::write(libc::STDOUT_FILENO, chunk).unwrap();
+                thread::sleep(Duration::from_micros(750));
+            }
+        } else {
+            unistd::write(libc::STDOUT_FILENO, &self.buffer).unwrap();
+        }
+        self.buffer.clear();
+        Ok(())
+    }
 }
 
 impl Term {
     pub fn new() -> Term {
         let (rows, columns) = get_window_size();
         Term {
-            buffer: String::new(),
+            buffer: vec![],
             rows,
             columns,
         }
     }
 
-    pub fn write(&mut self, str: &str) {
-        self.buffer.push_str(str);
-    }
-
     /// Write the line `str` a line padded to `width`.
     pub fn write_line<T: AsRef<str>>(&mut self, str: T) {
-        let str = str.as_ref();
-        self.write(&str);
+        write!(self, "{}", str.as_ref()).unwrap();
         self.erase_line(ErasePart::ToEnd);
         self.csi("E");
     }
 
-    pub fn flush(&mut self) {
-        let bytes = self.buffer.as_bytes();
-        if cfg!(feature = "debug_slow_term") {
-            for chunk in bytes.chunks(16) {
-                unistd::write(libc::STDOUT_FILENO, chunk).unwrap();
-                thread::sleep(Duration::from_micros(750));
-            }
-        } else {
-            unistd::write(libc::STDOUT_FILENO, bytes).unwrap();
-        }
-        self.buffer.clear();
-    }
-
     /// Generate a Control Sequence Introducer (CSI) escape code.
     pub fn csi(&mut self, s: &str) {
-        self.write(&format!("\x1b[{}", s));
+        let _ = write!(self, "\x1b[{}", s);
     }
 
     /// 8-bit

@@ -3,6 +3,8 @@
 
 extern crate signal_hook;
 
+use std::io::Write;
+
 use rile::buffer::Buffer;
 use rile::context::Context;
 use rile::event_loop::event_loop;
@@ -48,12 +50,12 @@ fn main() {
 
     term.enable_alternative_screen_buffer();
 
-    refresh_screen(term, context);
+    refresh_screen(term, context).unwrap();
 
     with_raw_mode(|| while !event_loop(term, context, |_, _| {}).is_ok() {})
         .expect("Could not initialize the terminal to run in raw mode.");
 
     term.disable_alternative_screen_buffer();
     term.show_cursor();
-    term.flush();
+    term.flush().unwrap();
 }
