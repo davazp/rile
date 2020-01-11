@@ -121,6 +121,10 @@ impl Term {
         self.csi(&format!("48;2;{};{};{}m", r, g, b));
     }
 
+    pub fn reset_attr(&mut self) {
+        self.csi("m")
+    }
+
     /// Enable the alternative screen buffer.
     ///
     /// It will switch to a screen buffer with no scrolling. You can

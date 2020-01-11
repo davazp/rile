@@ -91,7 +91,7 @@ impl Window {
                 term.write(&format!("{:width$}", "", width = offset))
             }
 
-            term.csi("m");
+            term.reset_attr();
             if let Some(highlight) = &buffer.highlight {
                 let out = line_content.replace(highlight, &format!("\x1b[7m{}\x1b[m", highlight));
                 term.write_line(out);
@@ -100,7 +100,7 @@ impl Window {
             };
         }
 
-        term.csi("m");
+        term.reset_attr();
     }
 
     fn render_modeline(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {

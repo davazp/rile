@@ -12,7 +12,7 @@ use rile::Key;
 
 fn check_system_color(term: &mut Term) {
     for n in 0..255 {
-        term.csi("m");
+        term.reset_attr();
         term.bg(n);
         term.write(&format!("{} {}", n, Color::name_from_code(n)));
         term.erase_line(ErasePart::ToEnd);
@@ -28,7 +28,7 @@ fn check_truecolor(term: &mut Term) {
                 let approx = Color::from_rgb(r, g, b).to_256_code();
 
                 let block = "                    ";
-                term.csi("m");
+                term.reset_attr();
                 term.rgb_bg(r, g, b);
                 term.flush();
                 term.write(block);
@@ -36,7 +36,7 @@ fn check_truecolor(term: &mut Term) {
                 term.bg(approx);
                 term.write(block);
 
-                term.csi("m");
+                term.reset_attr();
                 term.write("\n");
                 term.flush();
             }
@@ -83,7 +83,7 @@ fn main() {
             } else {
                 check_truecolor(&mut term);
             }
-            term.csi("m");
+            term.reset_attr();
             term.erase_line(ErasePart::ToEnd);
             term.flush();
         }
