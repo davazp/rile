@@ -108,16 +108,17 @@ fn starts_with<'a>(prefix: &str, str: &'a str) -> Option<&'a str> {
 
 impl fmt::Display for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut code = self.to_code();
+
         if self.is_ctrl() {
-            write!(f, "C-",)?
+            write!(f, "C-",)?;
+            code += 'a' as u32 & !0x1f;
         };
+
         if self.meta {
             write!(f, "M-",)?
         };
-        write!(
-            f,
-            "{}",
-            char::from_u32(self.code + ('a' as u32 & !0x1f)).unwrap()
-        )
+
+        write!(f, "{}", char::from_u32(code).unwrap())
     }
 }
