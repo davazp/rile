@@ -73,6 +73,10 @@ impl Key {
         self.code == 0x1f & self.code
     }
 
+    pub fn to_code(&self) -> u32 {
+        self.code
+    }
+
     /// Return a character if the key represents a non-control character.
     pub fn as_char(&self) -> Option<char> {
         if self.meta {
