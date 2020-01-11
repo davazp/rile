@@ -86,7 +86,7 @@ impl Window {
             };
 
             if self.show_lines && line_present {
-                term.csi("38;5;240m");
+                term.fg(240);
                 write!(term, "{:width$} ", linenum + 1, width = offset - 1).unwrap();
             } else {
                 write!(term, "{:width$}", "", width = offset).unwrap();
@@ -107,8 +107,8 @@ impl Window {
     fn render_modeline(&self, term: &mut term::Term, context: &Context, region: &layout::Region) {
         let buffer = &context.buffer_list.resolve_ref(self.buffer_ref);
 
-        term.csi("38;5;15m");
-        term.csi("48;5;236m");
+        term.fg(15);
+        term.bg(236);
 
         let scroll_line = self.scroll_line;
 
