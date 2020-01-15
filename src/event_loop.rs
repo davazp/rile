@@ -6,7 +6,10 @@ use crate::term::{read_key_timeout, reconciliate_term_size, Term};
 use crate::window::{adjust_scroll, refresh_screen};
 use crate::{Context, Key};
 
-pub type EventLoopError = ();
+pub enum EventLoopError {
+    Quit,
+}
+
 pub type Result<T> = std::result::Result<T, EventLoopError>;
 
 pub struct EventLoopState {
@@ -76,7 +79,7 @@ fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
 }
 
 /// Process user input.
-fn process_user_input(term: &mut Term, context: &mut Context) -> Result<()> {
+fn process_user_input(term: &mut Term, context: &mut Context) -> std::result::Result<(), Vec<Key>> {
     let cmd = read::read_key_binding(term, context);
 
     let minibuffer = &mut context.buffer_list.minibuffer;
@@ -96,13 +99,18 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> Result<()> {
                 Ok(())
             } else {
                 minibuffer.set(format!("{} is undefined", Key::format_seq(&keys)));
-                Err(())
+                Err(keys)
             }
         }
     }
 }
 
-pub fn event_loop<F>(term: &mut Term, context: &mut Context, callback: F) -> Result<()>
+pub fn event_loop<F>(
+    term: &mut Term,
+    context: &mut Context,
+    callback: F,
+    exit_on_undefined: bool,
+) -> Result<()>
 where
     F: Fn(&mut Term, &mut Context),
 {
@@ -114,7 +122,12 @@ where
 
         match process_user_input(term, context) {
             Ok(_) => {}
-            Err(_) => {}
+            Err(keys) => {
+                if exit_on_undefined {
+                    context.event_loop.unpeek_keys(keys);
+                    context.event_loop.complete(Ok(()));
+                }
+            }
         }
 
         if !context.goal_column.to_preserve {

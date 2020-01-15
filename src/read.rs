@@ -54,8 +54,8 @@ where
     buffer.cursor.line = 0;
     buffer.cursor.column = prompt.len();
 
-    let result =
-        event_loop(term, context, callback).map(|_| context.buffer_list.minibuffer.to_string());
+    let result = event_loop(term, context, callback, true)
+        .map(|_| context.buffer_list.minibuffer.to_string());
 
     context.buffer_list.minibuffer.truncate();
     context.window_list.minibuffer_focused = false;

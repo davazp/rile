@@ -52,7 +52,7 @@ fn main() {
 
     refresh_screen(term, context).unwrap();
 
-    with_raw_mode(|| while !event_loop(term, context, |_, _| {}).is_ok() {})
+    with_raw_mode(|| while !event_loop(term, context, |_, _| {}, false).is_ok() {})
         .expect("Could not initialize the terminal to run in raw mode.");
 
     term.disable_alternative_screen_buffer();

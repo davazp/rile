@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::buffer;
 use crate::context;
+use crate::event_loop;
 use crate::layout;
 use crate::read;
 use crate::term::Term;
@@ -279,6 +280,8 @@ pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
 pub fn keyboard_quit(context: &mut Context, term: &mut Term) -> Result {
     message(context, "Quit");
     window::ding(term, context).unwrap();
-    context.event_loop.complete(Err(()));
+    context
+        .event_loop
+        .complete(Err(event_loop::EventLoopError::Quit));
     Ok(())
 }
