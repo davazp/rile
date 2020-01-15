@@ -1,13 +1,19 @@
+use std::collections::VecDeque;
+
 use crate::commands;
 use crate::read;
-use crate::term::Term;
-use crate::window::adjust_scroll;
+use crate::term::{read_key_timeout, reconciliate_term_size, Term};
+use crate::window::{adjust_scroll, refresh_screen};
 use crate::{Context, Key};
 
 pub type EventLoopError = ();
 pub type Result<T> = std::result::Result<T, EventLoopError>;
 
 pub struct EventLoopState {
+    /// A buffer of keys that should be read by read_key. If empty,
+    /// this will be re-fill on demand from the keyboard input.
+    pending_input: VecDeque<Key>,
+
     /// If set (Some), the event loop is about to terminate with a
     /// specified Result.
     pub result: Option<Result<()>>,
@@ -15,7 +21,16 @@ pub struct EventLoopState {
 
 impl EventLoopState {
     pub fn new() -> EventLoopState {
-        EventLoopState { result: None }
+        EventLoopState {
+            result: None,
+            pending_input: VecDeque::new(),
+        }
+    }
+
+    pub fn unpeek_keys(&mut self, keys: Vec<Key>) {
+        for k in keys.into_iter() {
+            self.pending_input.push_back(k);
+        }
     }
 
     pub fn complete(&mut self, result: Result<()>) {
@@ -28,6 +43,26 @@ impl EventLoopState {
             _ => false,
         }
     }
+}
+
+pub fn read_key(term: &mut Term, context: &mut Context) -> Key {
+    context
+        .event_loop
+        .pending_input
+        .pop_front()
+        .unwrap_or_else(|| {
+            refresh_screen(term, context).unwrap();
+            loop {
+                if let Some(key) = read_key_timeout() {
+                    return key;
+                } else {
+                    if reconciliate_term_size(term, &context.was_resized) {
+                        adjust_scroll(term, context);
+                        refresh_screen(term, context).unwrap();
+                    }
+                }
+            }
+        })
 }
 
 fn is_self_insert(keys: &Vec<Key>) -> Option<char> {
@@ -77,7 +112,10 @@ where
     let result = loop {
         context.goal_column.to_preserve = false;
 
-        let _ = process_user_input(term, context);
+        match process_user_input(term, context) {
+            Ok(_) => {}
+            Err(_) => {}
+        }
 
         if !context.goal_column.to_preserve {
             context.goal_column.column = None;

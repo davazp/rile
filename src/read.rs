@@ -1,22 +1,8 @@
-use crate::event_loop::{self, event_loop};
+use crate::event_loop::{self, event_loop, read_key};
 use crate::keymap::{CommandHandler, Item};
-use crate::term::{read_key_timeout, reconciliate_term_size, Term};
-use crate::window::{adjust_scroll, message, refresh_screen};
+use crate::term::Term;
+use crate::window::{message, refresh_screen};
 use crate::{Context, Key};
-
-pub fn read_key(term: &mut Term, context: &mut Context) -> Key {
-    refresh_screen(term, context).unwrap();
-    loop {
-        if let Some(key) = read_key_timeout() {
-            return key;
-        } else {
-            if reconciliate_term_size(term, &context.was_resized) {
-                adjust_scroll(term, context);
-                refresh_screen(term, context).unwrap();
-            }
-        }
-    }
-}
 
 pub fn read_key_binding(
     term: &mut Term,
