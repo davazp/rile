@@ -265,15 +265,26 @@ pub fn kill_rile(context: &mut Context, _term: &mut Term) -> Result {
 pub fn isearch_forward(context: &mut Context, term: &mut Term) -> Result {
     let buffer_ref = context.window_list.get_current_window().buffer_ref;
 
-    let _ = read::read_string(term, context, "", |_, context| {
-        let partial_input = context.buffer_list.minibuffer.to_string();
-        let buffer = context.buffer_list.resolve_ref_as_mut(buffer_ref);
-        buffer.highlight = Some(partial_input);
-    });
+    let _ = read::read_string(
+        term,
+        context,
+        "",
+        |_, context| {
+            let partial_input = context.buffer_list.minibuffer.to_string();
+            let buffer = context.buffer_list.resolve_ref_as_mut(buffer_ref);
+            buffer.highlight = Some(partial_input);
+        },
+        true,
+    );
 
     let buffer = context.buffer_list.resolve_ref_as_mut(buffer_ref);
     buffer.highlight = None;
 
+    Ok(())
+}
+
+pub fn m_x(context: &mut Context, term: &mut Term) -> Result {
+    let _ = read::read_string(term, context, "", |_, _context| {}, false);
     Ok(())
 }
 

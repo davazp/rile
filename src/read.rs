@@ -41,6 +41,7 @@ pub fn read_string<F>(
     context: &mut Context,
     prompt: &str,
     callback: F,
+    exit_on_undefined: bool,
 ) -> event_loop::Result<String>
 where
     F: Fn(&mut Term, &mut Context),
@@ -54,7 +55,7 @@ where
     buffer.cursor.line = 0;
     buffer.cursor.column = prompt.len();
 
-    let result = event_loop(term, context, callback, true)
+    let result = event_loop(term, context, callback, exit_on_undefined)
         .map(|_| context.buffer_list.minibuffer.to_string());
 
     context.buffer_list.minibuffer.truncate();
