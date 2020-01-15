@@ -21,7 +21,7 @@ pub fn read_key(term: &mut Term, context: &mut Context) -> Key {
 pub fn read_key_binding(
     term: &mut Term,
     context: &mut Context,
-) -> event_loop::Result<CommandHandler> {
+) -> Result<CommandHandler, Vec<Key>> {
     let mut read = vec![];
 
     let window = context.window_list.get_current_window();

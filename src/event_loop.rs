@@ -4,7 +4,7 @@ use crate::term::Term;
 use crate::window::adjust_scroll;
 use crate::{Context, Key};
 
-pub type EventLoopError = Vec<Key>;
+pub type EventLoopError = ();
 pub type Result<T> = std::result::Result<T, EventLoopError>;
 
 pub struct EventLoopState {
@@ -61,7 +61,7 @@ fn process_user_input(term: &mut Term, context: &mut Context) -> Result<()> {
                 Ok(())
             } else {
                 minibuffer.set(format!("{} is undefined", Key::format_seq(&keys)));
-                Err(keys)
+                Err(())
             }
         }
     }
