@@ -80,8 +80,18 @@ impl Buffer {
         self.lines.remove(nth)
     }
 
-    pub fn remove_char_at(&mut self, line: usize, column: usize) {
-        self.lines[line].remove(column);
+    pub fn backward_delete(&mut self) {
+        if self.cursor.column > 0 {
+            self.cursor.column -= 1;
+            self.lines[self.cursor.line].remove(self.cursor.column);
+        } else if self.cursor.line > 0 {
+            let line = self.remove_line(self.cursor.line);
+            let previous_line = self.get_line_mut_unchecked(self.cursor.line - 1);
+            let previous_line_original_length = previous_line.len();
+            previous_line.push_str(&line);
+            self.cursor.line -= 1;
+            self.cursor.column = previous_line_original_length;
+        }
     }
 
     pub fn set<T: AsRef<str>>(&mut self, str: T) {
@@ -120,4 +130,41 @@ impl Buffer {
 pub enum SaveError {
     NoFile,
     IoError(std::io::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_empty_buffer() {
+        let buffer = Buffer::new();
+        assert_eq!(buffer.to_string(), "".to_string());
+    }
+
+    #[test]
+    fn delete_backward_char_in_middle_of_string() {
+        let mut buffer = Buffer::from_string("abcde");
+        buffer.cursor.column = 3;
+        buffer.backward_delete();
+        assert_eq!(buffer.to_string(), "abde");
+    }
+
+    #[test]
+    fn delete_backward_char_first_line_char() {
+        let mut buffer = Buffer::from_string("abc\nde");
+        buffer.cursor.line = 1;
+        buffer.cursor.column = 0;
+        buffer.backward_delete();
+        assert_eq!(buffer.to_string(), "abcde");
+    }
+
+    #[test]
+    fn delete_backward_char_first_char_first_line() {
+        let mut buffer = Buffer::from_string("abcd");
+        buffer.cursor.line = 0;
+        buffer.cursor.column = 0;
+        buffer.backward_delete();
+        assert_eq!(buffer.to_string(), "abcd");
+    }
 }

@@ -120,20 +120,7 @@ pub fn delete_char(context: &mut Context, term: &mut Term) -> Result {
 pub fn delete_backward_char(context: &mut Context, _term: &mut Term) -> Result {
     let window = context.window_list.get_current_window();
     let buffer = context.buffer_list.resolve_ref_as_mut(window.buffer_ref);
-
-    if buffer.cursor.column > 0 {
-        buffer.cursor.column -= 1;
-        buffer.remove_char_at(buffer.cursor.line, buffer.cursor.column);
-    } else if buffer.cursor.line > 0 {
-        let line = buffer.remove_line(buffer.cursor.line);
-        let previous_line = buffer.get_line_mut_unchecked(buffer.cursor.line - 1);
-        let previous_line_original_length = previous_line.len();
-        previous_line.push_str(&line);
-
-        buffer.cursor.line -= 1;
-        buffer.cursor.column = previous_line_original_length;
-    }
-
+    buffer.backward_delete();
     Ok(())
 }
 
